@@ -118,20 +118,76 @@ questions for accuracy before classroom use.**
 ```
 index.html               Vite entry
 vite.config.js           base path = /bookquiz/ for Pages
+public/
+  manifest.webmanifest   PWA manifest
+  sw.js                  Offline app-shell service worker
+  icon.svg, icon-*.png   App icons (maskable)
+  .nojekyll
 src/
-  main.jsx               React entry (+ error boundary, #root guard)
-  App.jsx                search → resolve → generate → quiz flow (no key)
+  main.jsx               React entry (+ error boundary, #root guard, SW register)
+  App.jsx                account bar + search → generate → quiz flow (no key)
   gradeLevels.js         K-12 levels + per-band comprehension guidance
-  bookSearch.js          Autocomplete search: Open Library + Project Gutenberg
-  bookLookup.js          Resolve a typed title/ISBN: Google Books + Open Library
-  quizCore.js            Shared prompt, JSON extraction, normalizer
-  aiProvider.js          Keyless generation: Pollinations + Gutenberg fallback
+  bookSearch.js          Autocomplete: Open Library + Google Books + Gutenberg
+  bookLookup.js          Resolve a typed title/ISBN
+  quizCore.js            Shared prompt (+ feedback injection), JSON parse, normalize
+  aiProvider.js          Keyless generation: parallel model race + Gutenberg fallback
   gutenberg.js           Fetch public-domain text; algorithmic (no-AI) quiz
-  components/            BookSearch (autocomplete), BookCard, Quiz
+  gamification.js        Points tiers, levels, badge catalog
+  store.js               Local-first accounts, points, history, feedback
+  components/            BookSearch, BookCard, Quiz, ScoreResult, AccountBar, ProfilePanel
   styles.css
 .github/workflows/
   deploy.yml             build + publish to GitHub Pages on push to main
 ```
+
+## Accounts, points & badges
+
+- **Profiles** are created with just a name and saved **on the device** (localStorage) —
+  no password or email. Switch between profiles from the account menu.
+- **Points** are awarded per quiz by score tier: **70% → +25, 80% → +40, 90% → +60,
+  100% → +100** (base, at 10 questions), scaled up to ~2× for a 50-question quiz; below
+  70% earns a small consolation.
+- **Levels** (Page Turner → Literary Legend) advance as points accumulate, with a
+  progress bar to the next level.
+- **Badges** unlock for milestones (first pass, perfect score, 5/10 passed, 3-in-a-row
+  streak, 50-question pass, reaching Level 5, …).
+- **History** of every attempt (book, score, grade, points) is shown in the profile sheet.
+
+> Cross-device note: because storage is local, points/history live per browser/device.
+> The data model is backend-ready, so a future sync service could share them across
+> devices without changing the UI.
+
+## Improving accuracy (feedback)
+
+After submitting, each question has a **⚑ Report this question** control. Flagging a
+question (e.g. "Not in the book") stores that feedback per book and **feeds it back into
+the generation prompt** next time — the model is explicitly told which questions were
+inaccurate and to ground harder. This is in-context learning per book (it does not
+retrain model weights); collected feedback is structured so it could later seed a
+fine-tuning/evaluation set.
+
+## Install as an app (PWA)
+
+The site is a installable **Progressive Web App** — it ships a web manifest, icons, and
+an offline app-shell service worker. On Android/desktop Chrome use **Install app**; on
+iOS Safari use **Share → Add to Home Screen**. It then launches full-screen like a native
+app.
+
+### Packaging for the App Store / Play Store
+
+Because it's a standards-based PWA, it can be wrapped for the native stores with
+[Capacitor](https://capacitorjs.com/) without rewriting the UI:
+
+```bash
+npm i -D @capacitor/cli @capacitor/core
+npx cap init BookQuiz com.example.bookquiz --web-dir=dist
+npm i @capacitor/ios @capacitor/android
+npm run build && npx cap add ios && npx cap add android && npx cap sync
+npx cap open ios   # or android — build/submit from Xcode / Android Studio
+```
+
+(Native packaging is a local/Xcode/Android-Studio step and is intentionally not part of
+the GitHub Pages deploy.)
 
 ## Tech
 

@@ -23,7 +23,7 @@ Do not wrap it in markdown fences or add any prose before or after the JSON.
 
 If you lack enough grounded knowledge of the book to write fair, accurate questions, say so in "sourceNote" and produce only the questions you can support — accuracy matters more than hitting the requested count.`
 
-export function buildPrompt(book, gradeValue, questionCount, excerpt) {
+export function buildPrompt(book, gradeValue, questionCount, excerpt, feedback) {
   if (!book || !book.title) {
     throw new Error('No book selected. Find a book first, then generate the quiz.')
   }
@@ -42,11 +42,27 @@ export function buildPrompt(book, gradeValue, questionCount, excerpt) {
     ? `\n=== EXCERPT FROM THE ACTUAL BOOK TEXT (public domain) ===\nUse this real text as your primary grounding. Base questions on what it actually says.\n"""\n${excerpt}\n"""\n`
     : ''
 
+  // In-context learning: prior reader feedback about inaccurate questions for
+  // THIS book. The model is told to avoid repeating them and to ground harder.
+  let feedbackBlock = ''
+  if (Array.isArray(feedback) && feedback.length) {
+    const items = feedback
+      .slice(0, 12)
+      .map((f, i) => {
+        const reason = f.reason ? ` (reported as: ${f.reason})` : ''
+        return `${i + 1}. "${f.question}"${reason}`
+      })
+      .join('\n')
+    feedbackBlock = `\n=== READER FEEDBACK — QUESTIONS PREVIOUSLY FLAGGED AS INACCURATE FOR THIS BOOK ===
+Readers reported that the questions below were NOT faithful to the book's actual content. Do NOT reproduce these questions or their premises. Be extra careful that every new question is verifiable against the book; when unsure about a detail, ask about something you are confident is in the text instead.
+${items}\n`
+  }
+
   return `Create a reading-comprehension quiz for the following book.
 
 === BOOK ===
 ${facts.join('\n')}
-${excerptBlock}
+${excerptBlock}${feedbackBlock}
 === TARGET LEVEL: ${label} (${g.band}) ===
 Vocabulary: ${g.vocabulary}
 Sentence length: ${g.sentenceLength}

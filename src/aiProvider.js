@@ -11,6 +11,7 @@
 
 import { SYSTEM_PROMPT, buildPrompt, extractJson, normalizeQuiz } from './quizCore.js'
 import { fetchGutenbergText, excerptFor, buildAlgorithmicQuiz } from './gutenberg.js'
+import { getFeedback } from './store.js'
 
 const POLLINATIONS_URL = 'https://text.pollinations.ai/'
 
@@ -102,7 +103,8 @@ function firstValid(makers, questionCount) {
 }
 
 async function tryKeylessLLM(book, gradeValue, questionCount, excerpt, signal) {
-  const userPrompt = buildPrompt(book, gradeValue, questionCount, excerpt)
+  const feedback = getFeedback(book)
+  const userPrompt = buildPrompt(book, gradeValue, questionCount, excerpt, feedback)
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: userPrompt },

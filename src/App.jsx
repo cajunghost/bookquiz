@@ -1,15 +1,23 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { GRADE_LEVELS, QUESTION_COUNTS, gradeLabel as labelFor } from './gradeLevels.js'
 import { resolveBook } from './bookLookup.js'
 import { generateQuiz } from './aiProvider.js'
+import { subscribe, getState, getActiveProfile } from './store.js'
 import BookCard from './components/BookCard.jsx'
 import BookSearch from './components/BookSearch.jsx'
 import Quiz from './components/Quiz.jsx'
+import AccountBar from './components/AccountBar.jsx'
+import ProfilePanel from './components/ProfilePanel.jsx'
 
 export default function App() {
+  // Reactively track the store (profiles/points/history).
+  useSyncExternalStore(subscribe, getState)
+  const profile = getActiveProfile()
+
   const [query, setQuery] = useState('')
   const [gradeLevel, setGradeLevel] = useState('5')
   const [questionCount, setQuestionCount] = useState(10)
+  const [profileOpen, setProfileOpen] = useState(false)
 
   const [book, setBook] = useState(null)
   const [quiz, setQuiz] = useState(null)
@@ -81,15 +89,19 @@ export default function App() {
   return (
     <div className="app">
       <header className="masthead">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">📖</span>
-          <h1 className="brand-name">BookQuiz</h1>
+        <div className="masthead-top">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true">📖</span>
+            <h1 className="brand-name">BookQuiz</h1>
+          </div>
+          <AccountBar profile={profile} onOpenProfile={() => setProfileOpen(true)} />
         </div>
         <p className="tagline">
           Free reading-comprehension quizzes for any book, tuned to the reader's grade.
-          No sign-up, no API key.
         </p>
       </header>
+
+      {profileOpen && <ProfilePanel profile={profile} onClose={() => setProfileOpen(false)} />}
 
       <main className="container">
         <form className="search-panel" onSubmit={(e) => { e.preventDefault(); onGenerate() }}>
@@ -165,7 +177,7 @@ export default function App() {
         {quiz && phase === 'ready' && (
           <>
             <BookCard book={book} />
-            <Quiz quiz={quiz} gradeLabel={gradeLabel} />
+            <Quiz quiz={quiz} gradeLabel={gradeLabel} book={book} />
             <div className="regenerate-row">
               <button type="button" className="btn btn--secondary" onClick={onGenerate} disabled={busy}>
                 Regenerate ({questionCount} · {gradeLabel})

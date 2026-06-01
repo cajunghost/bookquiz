@@ -701,3 +701,239 @@ h3,
   background: var(--success-bg);
   border-color: transparent;
 }
+
+/* ===================================================================
+   Mobile-app GUI refresh + gamification + accounts + feedback
+   =================================================================== */
+
+/* Safe-area padding for notched phones (PWA standalone). */
+.masthead {
+  padding-top: max(2.4rem, env(safe-area-inset-top));
+}
+.app {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Larger tap targets on touch devices. */
+@media (pointer: coarse) {
+  .btn { padding: 0.85rem 1.3rem; }
+  .option { padding: 0.85rem 0.95rem; }
+}
+
+/* ---- Masthead top row + account ---- */
+.masthead-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 820px;
+  margin: 0 auto;
+}
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem 0.3rem 0.3rem;
+  cursor: pointer;
+  font: inherit;
+}
+.account-pill:hover { background: rgba(255, 255, 255, 0.22); }
+.account-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.account-avatar--sm { width: 26px; height: 26px; font-size: 0.85rem; }
+.account-pill-text { display: flex; flex-direction: column; line-height: 1.1; text-align: left; }
+.account-pill-name { font-weight: 700; font-size: 0.9rem; }
+.account-pill-meta { font-size: 0.72rem; opacity: 0.85; }
+
+.account-signin { position: relative; }
+.btn--ghost {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+.btn--ghost:hover { background: rgba(255, 255, 255, 0.24); }
+.account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 280px;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  z-index: 40;
+  text-align: left;
+}
+.account-menu-row { display: flex; gap: 0.5rem; margin-top: 0.35rem; }
+.account-menu-row .text-input { flex: 1; }
+.account-existing { margin-top: 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.account-existing-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+}
+.account-existing-item:hover { border-color: var(--indigo); }
+.account-existing-pts { margin-left: auto; font-size: 0.78rem; color: var(--ink-soft); }
+.account-note { margin: 0.8rem 0 0; font-size: 0.74rem; color: var(--ink-soft); }
+
+/* ---- Gamified result card ---- */
+.result-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.6rem 1.4rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.result-ring {
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  margin: 0 auto 0.9rem;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  position: relative;
+}
+.result-ring--pass { background: conic-gradient(var(--success) 0 100%, var(--line) 0); background: radial-gradient(closest-side, #fff 78%, transparent 80% 100%), conic-gradient(var(--success) 0%, var(--success) 100%); }
+.result-ring--low { background: radial-gradient(closest-side, #fff 78%, transparent 80% 100%), conic-gradient(var(--accent) 0%, var(--accent) 100%); }
+.result-pct { font-size: 2rem; font-weight: 800; color: var(--ink); font-family: Georgia, serif; }
+.result-tier {
+  position: absolute;
+  bottom: 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+.result-headline { margin: 0; font-size: 1.4rem; }
+.result-sub { margin: 0.3rem 0 0; color: var(--ink-soft); }
+.result-points {
+  margin: 1rem auto 0.4rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.result-points-num { font-size: 1.8rem; font-weight: 800; color: var(--accent); }
+.result-points-label { font-size: 0.85rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+.result-signin-note { margin: 1rem 0 0; font-size: 0.88rem; color: var(--ink-soft); }
+
+/* ---- Level bar ---- */
+.level-bar { margin: 0.9rem auto 0; max-width: 420px; text-align: left; }
+.level-bar-head { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.3rem; }
+.level-name { font-weight: 700; color: var(--indigo); }
+.level-total { color: var(--ink-soft); }
+.level-track { height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.level-fill { height: 100%; background: linear-gradient(90deg, var(--indigo), var(--accent)); border-radius: 999px; transition: width 0.6s ease; }
+.level-next { display: block; margin-top: 0.3rem; font-size: 0.76rem; color: var(--ink-soft); }
+
+/* ---- Badge unlock popover + chips ---- */
+.badge-pop { margin-top: 1.1rem; padding: 0.9rem; background: var(--surface-alt); border-radius: 12px; }
+.badge-pop-title { margin: 0 0 0.5rem; font-weight: 700; }
+.badge-pop-row { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+.badge-chip { display: inline-flex; align-items: center; gap: 0.4rem; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 0.3rem 0.7rem; }
+.badge-chip-icon { font-size: 1.1rem; }
+.badge-chip-name { font-size: 0.82rem; font-weight: 600; }
+
+/* ---- Feedback (report a question) ---- */
+.feedback-row { margin-top: 0.8rem; }
+.feedback-flag {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0.2rem 0;
+  text-decoration: underline dotted;
+}
+.feedback-flag:hover { color: var(--accent); }
+.feedback-menu { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.feedback-menu-label { font-size: 0.8rem; color: var(--ink-soft); margin-right: 0.2rem; }
+.feedback-reason {
+  font: inherit;
+  font-size: 0.8rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+.feedback-reason:hover { border-color: var(--accent); color: var(--accent); }
+.feedback-cancel { font: inherit; font-size: 0.8rem; background: none; border: none; color: var(--ink-soft); cursor: pointer; }
+.feedback-done { font-size: 0.82rem; color: var(--success); }
+
+/* ---- Profile sheet ---- */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(27, 36, 64, 0.55);
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 2rem 1rem;
+}
+.sheet {
+  background: var(--bg);
+  width: 100%;
+  max-width: 560px;
+  border-radius: 16px;
+  padding: 1.3rem;
+  box-shadow: var(--shadow);
+}
+.sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.sheet-title { margin: 0; font-size: 1.5rem; }
+.sheet-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--ink-soft); }
+.sheet-subtitle { margin: 1.4rem 0 0.7rem; font-size: 1rem; }
+.profile-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; margin-top: 1rem; }
+.stat { background: var(--surface); border-radius: 12px; padding: 0.9rem 0.5rem; text-align: center; box-shadow: var(--shadow-sm); }
+.stat-num { display: block; font-size: 1.3rem; font-weight: 800; color: var(--indigo); }
+.stat-label { font-size: 0.72rem; color: var(--ink-soft); }
+
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.6rem; }
+.badge-tile { background: var(--surface); border-radius: 12px; padding: 0.8rem; text-align: center; box-shadow: var(--shadow-sm); }
+.badge-tile--locked { opacity: 0.55; }
+.badge-tile-icon { font-size: 1.6rem; display: block; }
+.badge-tile-name { display: block; font-weight: 700; font-size: 0.82rem; margin-top: 0.25rem; }
+.badge-tile-desc { display: block; font-size: 0.7rem; color: var(--ink-soft); margin-top: 0.15rem; }
+
+.history-empty { color: var(--ink-soft); font-size: 0.9rem; }
+.history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.history-item { display: flex; align-items: center; gap: 0.7rem; background: var(--surface); border-radius: 10px; padding: 0.6rem 0.8rem; box-shadow: var(--shadow-sm); }
+.history-badge { flex-shrink: 0; font-weight: 800; font-size: 0.85rem; border-radius: 8px; padding: 0.3rem 0.5rem; color: #fff; min-width: 48px; text-align: center; }
+.history-badge--pass { background: var(--success); }
+.history-badge--low { background: var(--accent); }
+.history-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.history-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-meta { font-size: 0.74rem; color: var(--ink-soft); }
+.history-pts { font-weight: 700; color: var(--accent); }
+.sheet-signout { margin-top: 1.4rem; width: 100%; }
+
+@media (max-width: 640px) {
+  .brand-name { font-size: 1.9rem; }
+  .account-menu { width: 250px; }
+}

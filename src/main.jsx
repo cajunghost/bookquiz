@@ -20,3 +20,13 @@ if (!container) {
     </React.StrictMode>,
   )
 }
+
+// Register the service worker for installability + offline app shell. Uses a
+// path relative to the page so it works under the /bookquiz/ project base.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    const base = document.querySelector('link[rel="manifest"]')?.getAttribute('href') || './'
+    const swUrl = new URL('sw.js', new URL(base, window.location.href)).href
+    navigator.serviceWorker.register(swUrl).catch(() => {})
+  })
+}
