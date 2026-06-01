@@ -11,7 +11,8 @@ function scoreMessage(pct) {
 }
 
 export default function Quiz({ quiz, gradeLabel }) {
-  const { questions, sourceNote, requestedCount, generatedCount } = quiz
+  const questions = Array.isArray(quiz?.questions) ? quiz.questions : []
+  const { sourceNote, requestedCount, generatedCount } = quiz || {}
   const [answers, setAnswers] = useState({})
   const [submitted, setSubmitted] = useState(false)
 
@@ -25,8 +26,8 @@ export default function Quiz({ quiz, gradeLabel }) {
   )
 
   const answeredCount = Object.keys(answers).length
-  const allAnswered = answeredCount === questions.length
-  const pct = Math.round((correctCount / questions.length) * 100)
+  const allAnswered = questions.length > 0 && answeredCount === questions.length
+  const pct = questions.length ? Math.round((correctCount / questions.length) * 100) : 0
 
   function choose(qIndex, optIndex) {
     if (submitted) return
@@ -78,7 +79,7 @@ export default function Quiz({ quiz, gradeLabel }) {
               </div>
               <p className="question-stem">{q.question}</p>
               <div className="options">
-                {q.options.map((opt, oi) => {
+                {(q.options || []).map((opt, oi) => {
                   const isSelected = selected === oi
                   const isCorrect = q.correctIndex === oi
                   let state = ''
