@@ -26,17 +26,32 @@ sent directly to Google).
 
 ## Make it live (one-time, owner only)
 
-GitHub Pages publishing depends on two repo settings that can only be changed by the
-repo owner in the GitHub UI:
+GitHub Pages publishing depends on repo settings that can only be changed by the repo
+owner in the GitHub UI:
 
 1. **Make the repo Public** — repo **Settings → General → Danger Zone → Change repository
    visibility → Public**. (Required for free-tier Pages.)
-2. **Let the deploy run** — the included workflow (`.github/workflows/deploy.yml`) builds
-   and publishes on every push to `main`, and turns Pages on automatically
-   (`configure-pages` with `enablement: true`). If a green run doesn't appear after you
-   make the repo public, open the **Actions** tab → **Deploy to GitHub Pages** → **Run workflow**.
+2. **Set the Pages source to GitHub Actions** — repo **Settings → Pages → Build and
+   deployment → Source: GitHub Actions**. This is the critical one (see Troubleshooting).
+3. **Let the deploy run** — the workflow (`.github/workflows/deploy.yml`) builds and
+   publishes on every push to `main` and turns Pages on automatically
+   (`configure-pages` with `enablement: true`). If no green run appears, open the
+   **Actions** tab → **Deploy to GitHub Pages** → **Run workflow**.
 
 Then the site is live at `https://cajunghost.github.io/bookquiz/` (first publish ~1–2 min).
+
+## Troubleshooting
+
+**The Actions run is green but the site is a white/blank page.**
+This means GitHub Pages is serving the repository's *source* `index.html` (which loads
+`/src/main.jsx`, a dev-only file that doesn't exist in production) instead of the *built*
+site from the Actions artifact. Fix it in **Settings → Pages → Build and deployment** by
+setting **Source: GitHub Actions** (not "Deploy from a branch"). Re-run the workflow if
+needed. When Pages serves the built artifact, `index.html` loads `/bookquiz/assets/*.js`
+and the app renders.
+
+**404 at the domain.** The repo is still Private, or no successful deploy has run yet.
+See "Make it live" above.
 
 ## Develop locally
 

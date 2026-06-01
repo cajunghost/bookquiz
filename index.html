@@ -10,7 +10,15 @@
     <title>BookQuiz · Reading Comprehension for Any Book</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Visible until React mounts. If this text remains, the JS bundle did
+           not load — usually because GitHub Pages "Source" is set to "Deploy
+           from a branch" instead of "GitHub Actions" (it then serves this
+           source file, not the built one). See the repo README. -->
+      <noscript style="display:block;padding:2rem;font-family:sans-serif;text-align:center">
+        BookQuiz needs JavaScript enabled to run.
+      </noscript>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
