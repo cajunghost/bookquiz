@@ -69,14 +69,25 @@ export default function App() {
   }
 
   async function onGenerate() {
-    if (busy || !book || !hasKey) return
+    if (busy || !hasKey) return
     setError('')
     setQuiz(null)
     setPhase('generating')
     try {
+      // Resolve the book on demand if it hasn't been resolved yet (or the
+      // query changed), so generating never runs with a null book.
+      let activeBook = book
+      if (!activeBook || !activeBook.title) {
+        if (!query.trim()) throw new Error('Enter a book title or ISBN first.')
+        activeBook = await resolveBook(query.trim())
+        if (!activeBook) {
+          throw new Error('No matching book was found. Try a more specific title or an ISBN.')
+        }
+        setBook(activeBook)
+      }
       const result = await generateQuiz({
         apiKey: apiKey.trim(),
-        book,
+        book: activeBook,
         gradeValue: gradeLevel,
         questionCount: Number(questionCount),
       })
@@ -84,7 +95,7 @@ export default function App() {
       setPhase('ready')
     } catch (err) {
       setError(err.message)
-      setPhase('resolved')
+      setPhase(book ? 'resolved' : 'idle')
     }
   }
 

@@ -55,6 +55,9 @@ function maxTokensFor(count) {
 }
 
 function buildPrompt(book, gradeValue, questionCount) {
+  if (!book || !book.title) {
+    throw new Error('No book selected. Find a book first, then generate the quiz.')
+  }
   const g = getGradeGuidance(gradeValue)
   const label = gradeLabel(gradeValue)
   const facts = [`Title: ${book.title}`]
@@ -106,6 +109,10 @@ function normalize(data, requestedCount) {
 }
 
 export async function generateQuiz({ apiKey, book, gradeValue, questionCount }) {
+  if (!apiKey) throw new Error('Enter your Gemini API key first.')
+  if (!book || !book.title) {
+    throw new Error('No book selected. Find a book first, then generate the quiz.')
+  }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
