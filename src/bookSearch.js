@@ -53,6 +53,38 @@ async function searchOpenLibrary(q, signal) {
     }))
 }
 
+async function searchGoogleBooks(q, signal) {
+  // Google Books has one of the largest catalogs; great for recent / popular
+  // titles that may be sparse in Open Library.
+  const data = await fetchJson(
+    `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}` +
+      `&maxResults=8&printType=books&orderBy=relevance`,
+    signal,
+  )
+  if (!data?.items) return []
+  return data.items
+    .filter((it) => it.volumeInfo?.title)
+    .map((it) => {
+      const v = it.volumeInfo
+      const isbns = (v.industryIdentifiers || []).map((x) => x.identifier).filter(Boolean)
+      return {
+        id: `gb:${it.id}`,
+        source: 'Google Books',
+        title: v.title,
+        authors: v.authors || [],
+        publishedYear: v.publishedDate ? v.publishedDate.slice(0, 4) : null,
+        coverUrl:
+          v.imageLinks?.thumbnail?.replace('http://', 'https://') ||
+          v.imageLinks?.smallThumbnail?.replace('http://', 'https://') ||
+          null,
+        subjects: (v.categories || []).slice(0, 12),
+        firstSentence: null,
+        isbns: isbns.slice(0, 3),
+        description: v.description || null,
+      }
+    })
+}
+
 async function searchGutenberg(q, signal) {
   // Gutendex is a free JSON API over the Project Gutenberg catalog.
   const data = await fetchJson(
@@ -60,7 +92,7 @@ async function searchGutenberg(q, signal) {
     signal,
   )
   if (!data?.results) return []
-  return data.results.slice(0, 6).map((b) => ({
+  return data.results.slice(0, 8).map((b) => ({
     id: `pg:${b.id}`,
     source: 'Project Gutenberg',
     title: b.title,
@@ -86,34 +118,45 @@ function tidyAuthor(name) {
 }
 
 function dedupeKey(s) {
-  return `${(s.title || '').toLowerCase().trim()}|${(s.authors[0] || '')
+  const title = (s.title || '')
     .toLowerCase()
-    .trim()}`
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(the|a|an)\b/g, '')
+    .trim()
+  // Use the first author's surname (last word) so "Mary Shelley" and
+  // "Mary Wollstonecraft Shelley" collapse to the same key.
+  const author = (s.authors?.[0] || '').toLowerCase().trim()
+  const surname = author ? author.split(/\s+/).pop() : ''
+  return `${title}|${surname}`
 }
 
 /**
  * Search all sources in parallel and return a merged, de-duplicated list of
- * suggestions (each is a quiz-ready book record). Open Library results lead
- * (broadest catalog); Project Gutenberg fills in / flags free-text titles.
+ * suggestions (each is a quiz-ready book record). Open Library and Google Books
+ * provide breadth; Project Gutenberg contributes free full-text titles (flagged
+ * and preferred for grounding). Any source that errors or is rate-limited is
+ * simply skipped, so suggestions keep working as long as one source responds.
  */
 export async function searchBooks(query, signal) {
   const q = String(query || '').trim()
   if (q.length < 2) return []
 
-  const [ol, pg] = await Promise.all([
+  const [ol, gb, pg] = await Promise.all([
     searchOpenLibrary(q, signal),
+    searchGoogleBooks(q, signal),
     searchGutenberg(q, signal),
   ])
 
   const merged = []
   const seen = new Map() // dedupeKey -> index in merged
 
-  for (const s of [...ol, ...pg]) {
+  // Order matters for which record "wins" a duplicate: list Open Library and
+  // Google Books first for rich metadata, then fold in Gutenberg's free-text
+  // flag/handle onto the existing entry.
+  for (const s of [...ol, ...gb, ...pg]) {
     s.authors = (s.authors || []).map(tidyAuthor)
     const key = dedupeKey(s)
     if (seen.has(key)) {
-      // Prefer the record that already has a cover / more data, but keep the
-      // freeText flag and Gutenberg full-text handle if either source had it.
       const existing = merged[seen.get(key)]
       existing.freeText = existing.freeText || s.freeText
       if (!existing.pgId && s.pgId) {
@@ -121,12 +164,17 @@ export async function searchBooks(query, signal) {
         existing.formats = s.formats
       }
       if (!existing.coverUrl && s.coverUrl) existing.coverUrl = s.coverUrl
+      if (!existing.description && s.description) existing.description = s.description
       if (!existing.subjects?.length && s.subjects?.length) existing.subjects = s.subjects
+      if (!existing.isbns?.length && s.isbns?.length) existing.isbns = s.isbns
       continue
     }
     seen.set(key, merged.length)
     merged.push(s)
   }
 
-  return merged.slice(0, 10)
+  // Relevance order is preserved (Open Library / Google Books lead); free-text
+  // titles keep their "Free text" badge so users can spot the most reliable
+  // picks without burying the exact match they searched for.
+  return merged.slice(0, 12)
 }

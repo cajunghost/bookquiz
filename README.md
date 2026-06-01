@@ -29,13 +29,22 @@ No key is required. The app generates a quiz in this order:
 
 ### Book sources (free & open)
 
-- **Open Library** (openlibrary.org) — the full ~20M-record catalog, used for the
-  autocomplete search and metadata (covers, subjects, first lines, ISBNs).
-- **Project Gutenberg** via the **Gutendex** API — free public-domain books; matching
-  titles are flagged **"Free text"** in the dropdown.
-- **Google Books** — additional metadata when resolving a typed title/ISBN.
+The autocomplete searches several open catalogs in parallel and merges the results
+(editions of the same title collapse together):
 
-All are queried directly from the browser with no API key.
+- **Open Library** (openlibrary.org) — the full ~20M-record catalog.
+- **Google Books** — broad coverage of recent and popular titles.
+- **Project Gutenberg** via the **Gutendex** API — free public-domain books; these are
+  flagged **"Free text"** and are the most reliable for quiz generation.
+
+All are queried directly from the browser with no API key. If one source is rate-limited
+or down, the others still return results.
+
+### Quiz models (free & keyless)
+
+Generation tries several free, no-key models in turn (via Pollinations) across two
+transports, so a single busy model doesn't fail the request — then falls back to the
+deterministic public-domain text path described above.
 
 ## Live site
 

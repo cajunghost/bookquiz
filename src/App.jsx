@@ -50,24 +50,6 @@ export default function App() {
     setPhase('resolved')
   }
 
-  async function onFindBook(e) {
-    e?.preventDefault?.()
-    if (!query.trim() || busy) return
-    setError('')
-    setQuiz(null)
-    setBook(null)
-    setPhase('resolving')
-    try {
-      const found = await resolveBook(query.trim())
-      if (!found) throw new Error('No matching book was found. Try a more specific title or an ISBN.')
-      setBook(found)
-      setPhase('resolved')
-    } catch (err) {
-      setError(err.message)
-      setPhase('idle')
-    }
-  }
-
   async function onGenerate() {
     if (busy) return
     setError('')
@@ -110,7 +92,7 @@ export default function App() {
       </header>
 
       <main className="container">
-        <form className="search-panel" onSubmit={onFindBook}>
+        <form className="search-panel" onSubmit={(e) => { e.preventDefault(); onGenerate() }}>
           <label className="field field--query">
             <span className="field-label">Search for a book</span>
             <BookSearch
@@ -121,10 +103,11 @@ export default function App() {
                 if (book || quiz) resetDownstream()
               }}
               onSelect={onSelectSuggestion}
-              onSubmitRaw={() => onFindBook()}
+              onSubmitRaw={() => onGenerate()}
             />
             <span className="field-hint">
-              Start typing to search Open Library &amp; Project Gutenberg, or paste an ISBN.
+              Start typing to search Open Library, Google Books &amp; Project Gutenberg —
+              pick a result, or paste an ISBN.
             </span>
           </label>
 
@@ -155,8 +138,12 @@ export default function App() {
               </select>
             </label>
 
-            <button type="submit" className="btn btn--primary find-btn" disabled={!query.trim() || busy}>
-              {phase === 'resolving' ? 'Finding…' : 'Find book'}
+            <button type="submit" className="btn btn--accent find-btn" disabled={!query.trim() || busy}>
+              {phase === 'resolving'
+                ? 'Finding…'
+                : phase === 'generating'
+                  ? 'Building…'
+                  : 'Generate quiz'}
             </button>
           </div>
         </form>
@@ -167,26 +154,7 @@ export default function App() {
           </div>
         )}
 
-        {book && (
-          <>
-            <BookCard book={book} />
-            {phase !== 'ready' && (
-              <div className="generate-row">
-                <button type="button" className="btn btn--accent" onClick={onGenerate} disabled={busy}>
-                  {phase === 'generating'
-                    ? 'Building your quiz…'
-                    : `Generate ${questionCount}-question quiz · ${gradeLabel}`}
-                </button>
-                {phase === 'generating' && (
-                  <p className="hint">
-                    Writing grade-appropriate questions grounded in the book — this can take a
-                    moment for longer quizzes.
-                  </p>
-                )}
-              </div>
-            )}
-          </>
-        )}
+        {book && phase !== 'ready' && <BookCard book={book} />}
 
         {phase === 'generating' && (
           <div className="loading-bar" aria-hidden="true">
@@ -196,6 +164,7 @@ export default function App() {
 
         {quiz && phase === 'ready' && (
           <>
+            <BookCard book={book} />
             <Quiz quiz={quiz} gradeLabel={gradeLabel} />
             <div className="regenerate-row">
               <button type="button" className="btn btn--secondary" onClick={onGenerate} disabled={busy}>
