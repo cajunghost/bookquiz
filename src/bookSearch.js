@@ -73,6 +73,8 @@ async function searchGutenberg(q, signal) {
     description: null,
     // Free full text is available for Gutenberg titles — note it for grounding.
     freeText: true,
+    pgId: b.id,
+    formats: b.formats || null,
   }))
 }
 
@@ -111,9 +113,13 @@ export async function searchBooks(query, signal) {
     const key = dedupeKey(s)
     if (seen.has(key)) {
       // Prefer the record that already has a cover / more data, but keep the
-      // freeText flag if either source had it.
+      // freeText flag and Gutenberg full-text handle if either source had it.
       const existing = merged[seen.get(key)]
       existing.freeText = existing.freeText || s.freeText
+      if (!existing.pgId && s.pgId) {
+        existing.pgId = s.pgId
+        existing.formats = s.formats
+      }
       if (!existing.coverUrl && s.coverUrl) existing.coverUrl = s.coverUrl
       if (!existing.subjects?.length && s.subjects?.length) existing.subjects = s.subjects
       continue

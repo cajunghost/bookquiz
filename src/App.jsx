@@ -1,31 +1,12 @@
 import { useState } from 'react'
 import { GRADE_LEVELS, QUESTION_COUNTS, gradeLabel as labelFor } from './gradeLevels.js'
 import { resolveBook } from './bookLookup.js'
-import { generateQuiz } from './gemini.js'
+import { generateQuiz } from './aiProvider.js'
 import BookCard from './components/BookCard.jsx'
 import BookSearch from './components/BookSearch.jsx'
 import Quiz from './components/Quiz.jsx'
 
-const KEY_STORE = 'bookquiz_gemini_key'
-const readKey = () => {
-  try {
-    return localStorage.getItem(KEY_STORE) || ''
-  } catch {
-    return ''
-  }
-}
-const writeKey = (v) => {
-  try {
-    v ? localStorage.setItem(KEY_STORE, v) : localStorage.removeItem(KEY_STORE)
-  } catch {
-    /* ignore */
-  }
-}
-
 export default function App() {
-  const [apiKey, setApiKey] = useState(readKey())
-  const [showKey, setShowKey] = useState(false)
-
   const [query, setQuery] = useState('')
   const [gradeLevel, setGradeLevel] = useState('5')
   const [questionCount, setQuestionCount] = useState(10)
@@ -35,14 +16,8 @@ export default function App() {
   const [phase, setPhase] = useState('idle') // idle | resolving | resolved | generating | ready
   const [error, setError] = useState('')
 
-  const hasKey = apiKey.trim().length > 0
   const gradeLabel = labelFor(gradeLevel)
   const busy = phase === 'resolving' || phase === 'generating'
-
-  function onApiKeyChange(value) {
-    setApiKey(value)
-    writeKey(value)
-  }
 
   function resetDownstream() {
     setBook(null)
@@ -68,6 +43,8 @@ export default function App() {
       pageCount: null,
       coverUrl: s.coverUrl || null,
       freeText: !!s.freeText,
+      pgId: s.pgId || null,
+      formats: s.formats || null,
       sources: [s.source].filter(Boolean),
     })
     setPhase('resolved')
@@ -92,16 +69,14 @@ export default function App() {
   }
 
   async function onGenerate() {
-    if (busy || !hasKey) return
+    if (busy) return
     setError('')
     setQuiz(null)
     setPhase('generating')
     try {
-      // Resolve the book on demand if it hasn't been resolved yet (or the
-      // query changed), so generating never runs with a null book.
       let activeBook = book
       if (!activeBook || !activeBook.title) {
-        if (!query.trim()) throw new Error('Enter a book title or ISBN first.')
+        if (!query.trim()) throw new Error('Search for a book first.')
         activeBook = await resolveBook(query.trim())
         if (!activeBook) {
           throw new Error('No matching book was found. Try a more specific title or an ISBN.')
@@ -109,7 +84,6 @@ export default function App() {
         setBook(activeBook)
       }
       const result = await generateQuiz({
-        apiKey: apiKey.trim(),
         book: activeBook,
         gradeValue: gradeLevel,
         questionCount: Number(questionCount),
@@ -130,47 +104,12 @@ export default function App() {
           <h1 className="brand-name">BookQuiz</h1>
         </div>
         <p className="tagline">
-          Reading-comprehension quizzes for any book, tuned to the reader's grade.
+          Free reading-comprehension quizzes for any book, tuned to the reader's grade.
+          No sign-up, no API key.
         </p>
       </header>
 
       <main className="container">
-        <details className="key-panel" open={!hasKey}>
-          <summary className="key-summary">
-            <span>
-              Google Gemini API key (free){' '}
-              {hasKey ? (
-                <span className="key-status key-status--ok">saved in this browser</span>
-              ) : (
-                <span className="key-status key-status--need">required</span>
-              )}
-            </span>
-          </summary>
-          <div className="key-body">
-            <div className="key-input-row">
-              <input
-                type={showKey ? 'text' : 'password'}
-                className="text-input"
-                placeholder="AIza..."
-                value={apiKey}
-                onChange={(e) => onApiKeyChange(e.target.value)}
-                autoComplete="off"
-                spellCheck="false"
-              />
-              <button type="button" className="btn btn--secondary" onClick={() => setShowKey((s) => !s)}>
-                {showKey ? 'Hide' : 'Show'}
-              </button>
-            </div>
-            <p className="key-note">
-              Free from Google AI Studio. Your key is stored only in this browser and sent
-              directly to the Gemini API — it never passes through any server.{' '}
-              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-                Get a free key ↗
-              </a>
-            </p>
-          </div>
-        </details>
-
         <form className="search-panel" onSubmit={onFindBook}>
           <label className="field field--query">
             <span className="field-label">Search for a book</span>
@@ -233,17 +172,10 @@ export default function App() {
             <BookCard book={book} />
             {phase !== 'ready' && (
               <div className="generate-row">
-                <button
-                  type="button"
-                  className="btn btn--accent"
-                  onClick={onGenerate}
-                  disabled={busy || !hasKey}
-                >
+                <button type="button" className="btn btn--accent" onClick={onGenerate} disabled={busy}>
                   {phase === 'generating'
                     ? 'Building your quiz…'
-                    : hasKey
-                      ? `Generate ${questionCount}-question quiz · ${gradeLabel}`
-                      : 'Enter your Gemini key above to generate'}
+                    : `Generate ${questionCount}-question quiz · ${gradeLabel}`}
                 </button>
                 {phase === 'generating' && (
                   <p className="hint">
@@ -276,8 +208,9 @@ export default function App() {
 
       <footer className="footer">
         <p>
-          Runs entirely in your browser. Quizzes are AI-generated from book metadata and the
-          model's knowledge of the work — review questions for accuracy before classroom use.
+          Free and keyless. Book data from Open Library &amp; Project Gutenberg; quizzes are
+          AI-generated (with a public-domain text fallback) — review questions for accuracy
+          before classroom use.
         </p>
       </footer>
     </div>
