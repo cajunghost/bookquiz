@@ -3,6 +3,7 @@ import { GRADE_LEVELS, QUESTION_COUNTS, gradeLabel as labelFor } from './gradeLe
 import { resolveBook } from './bookLookup.js'
 import { generateQuiz } from './gemini.js'
 import BookCard from './components/BookCard.jsx'
+import BookSearch from './components/BookSearch.jsx'
 import Quiz from './components/Quiz.jsx'
 
 const KEY_STORE = 'bookquiz_gemini_key'
@@ -50,8 +51,30 @@ export default function App() {
     setPhase('idle')
   }
 
+  // Picked from the autocomplete dropdown — already a quiz-ready record.
+  function onSelectSuggestion(s) {
+    setError('')
+    setQuiz(null)
+    setBook({
+      title: s.title,
+      subtitle: null,
+      authors: s.authors || [],
+      description: s.description || null,
+      categories: [],
+      subjects: s.subjects || [],
+      firstSentence: s.firstSentence || null,
+      publishedYear: s.publishedYear || null,
+      publisher: null,
+      pageCount: null,
+      coverUrl: s.coverUrl || null,
+      freeText: !!s.freeText,
+      sources: [s.source].filter(Boolean),
+    })
+    setPhase('resolved')
+  }
+
   async function onFindBook(e) {
-    e.preventDefault()
+    e?.preventDefault?.()
     if (!query.trim() || busy) return
     setError('')
     setQuiz(null)
@@ -150,18 +173,20 @@ export default function App() {
 
         <form className="search-panel" onSubmit={onFindBook}>
           <label className="field field--query">
-            <span className="field-label">Book title or ISBN</span>
-            <input
-              type="text"
-              className="text-input"
-              placeholder="e.g. Charlotte's Web  ·  The Giver  ·  9780061120084"
+            <span className="field-label">Search for a book</span>
+            <BookSearch
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
+              disabled={busy}
+              onChange={(v) => {
+                setQuery(v)
                 if (book || quiz) resetDownstream()
               }}
-              autoFocus
+              onSelect={onSelectSuggestion}
+              onSubmitRaw={() => onFindBook()}
             />
+            <span className="field-hint">
+              Start typing to search Open Library &amp; Project Gutenberg, or paste an ISBN.
+            </span>
           </label>
 
           <div className="controls">
