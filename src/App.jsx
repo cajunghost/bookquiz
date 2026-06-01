@@ -8,6 +8,7 @@ import BookSearch from './components/BookSearch.jsx'
 import Quiz from './components/Quiz.jsx'
 import AccountBar from './components/AccountBar.jsx'
 import ProfilePanel from './components/ProfilePanel.jsx'
+import KeySettings from './components/KeySettings.jsx'
 
 export default function App() {
   // Reactively track the store (profiles/points/history).
@@ -104,6 +105,7 @@ export default function App() {
       {profileOpen && <ProfilePanel profile={profile} onClose={() => setProfileOpen(false)} />}
 
       <main className="container">
+        <KeySettings />
         <form className="search-panel" onSubmit={(e) => { e.preventDefault(); onGenerate() }}>
           <label className="field field--query">
             <span className="field-label">Search for a book</span>

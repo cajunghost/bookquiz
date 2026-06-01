@@ -937,3 +937,52 @@ h3,
   .brand-name { font-size: 1.9rem; }
   .account-menu { width: 250px; }
 }
+
+/* ---- Bring-your-own-key panel additions ---- */
+.key-status--opt {
+  color: var(--ink-soft);
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+}
+.key-intro {
+  margin: 0 0 0.9rem;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+.key-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.btn--ghost-dark {
+  background: none;
+  color: var(--ink-soft);
+  border: 1.5px solid var(--line);
+}
+.btn--ghost-dark:hover { border-color: var(--accent); color: var(--accent); }
+.key-howto {
+  margin-top: 1.1rem;
+  padding: 0.9rem 1rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.key-howto-title { margin: 0 0 0.5rem; font-weight: 700; font-size: 0.9rem; }
+.key-howto-steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.88rem;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.key-howto-steps a { color: var(--indigo); font-weight: 600; }
+.key-howto-steps code {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0 0.3rem;
+  font-size: 0.85em;
+}
+.key-howto-note { margin: 0.7rem 0 0; font-size: 0.78rem; color: var(--ink-soft); }

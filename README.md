@@ -27,6 +27,23 @@ No key is required. The app generates a quiz in this order:
 > be slow or busy — just retry. Public-domain (Project Gutenberg) titles are the most
 > reliable since they have the no-AI fallback.
 
+### Optional: bring your own AI key (higher quality)
+
+You can optionally add a **free Google AI Studio (Gemini)** key for faster, higher-quality
+quizzes. When a key is saved, it's used first; if it ever fails, the app automatically
+falls back to the free keyless path. The key is stored **only in your browser** and sent
+directly to Google — never to any server. Open **“Use your own AI key”** at the top of the
+app to add it.
+
+**Get a free key (~1 minute):**
+
+1. Go to <https://aistudio.google.com/apikey> and sign in with a Google account.
+2. Click **Create API key** (accept the terms if prompted).
+3. Choose or create a project if asked, then **Create**.
+4. Copy the key (starts with `AIza…`), paste it into the app, and **Save key**.
+
+The free tier requires no billing. Remove the key any time to return to the free service.
+
 ### Book sources (free & open)
 
 The autocomplete searches several open catalogs in parallel and merges the results

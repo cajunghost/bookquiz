@@ -11,7 +11,8 @@
 
 import { SYSTEM_PROMPT, buildPrompt, extractJson, normalizeQuiz } from './quizCore.js'
 import { fetchGutenbergText, excerptFor, buildAlgorithmicQuiz } from './gutenberg.js'
-import { getFeedback } from './store.js'
+import { getFeedback, getApiKey } from './store.js'
+import { generateWithGemini } from './gemini.js'
 
 const POLLINATIONS_URL = 'https://text.pollinations.ai/'
 
@@ -138,14 +139,50 @@ export async function generateQuiz({ book, gradeValue, questionCount, signal }) 
     throw new Error('No book selected. Search for a book first, then generate the quiz.')
   }
 
-  // 1. For public-domain books, fetch the full text IN PARALLEL with a first
-  //    (un-grounded) LLM race, so grounding never adds latency on the happy
-  //    path. If the text arrives and the ungrounded race lost, we re-race with
-  //    the excerpt.
+  // 1. For public-domain books, fetch the full text IN PARALLEL with the first
+  //    generation attempt, so grounding never adds latency on the happy path.
   const textPromise =
     book.freeText && book.pgId
       ? fetchGutenbergText(book.pgId, book.formats, signal).catch(() => null)
       : Promise.resolve(null)
+
+  // 1a. If the user supplied their own Gemini key, use it first (higher
+  //     quality). On any failure we fall through to the free keyless path —
+  //     except a clearly-bad key, which we surface so they can fix it.
+  const userKey = getApiKey()
+  if (userKey) {
+    const fullTextForKey = await textPromise
+    const excerpt = excerptFor(fullTextForKey)
+    try {
+      const quiz = await generateWithGemini({
+        apiKey: userKey,
+        book,
+        gradeValue,
+        questionCount,
+        excerpt,
+        signal,
+      })
+      if (!quiz.sourceNote && fullTextForKey) {
+        quiz.sourceNote = 'Grounded in the book’s public-domain text.'
+      }
+      return quiz
+    } catch (err) {
+      if (err?.keyProblem) throw err // bad key — tell the user, don't silently swap
+      // Otherwise fall back to the keyless path below, reusing the fetched text.
+      const firstQuiz = await tryKeylessLLM(book, gradeValue, questionCount, excerpt, signal)
+      if (firstQuiz) {
+        if (fullTextForKey && !firstQuiz.sourceNote) {
+          firstQuiz.sourceNote = 'Grounded in the book’s public-domain text.'
+        }
+        return firstQuiz
+      }
+      if (fullTextForKey) {
+        const algo = buildAlgorithmicQuiz({ fullText: fullTextForKey, title: book.title, requestedCount: questionCount })
+        if (algo && algo.questions.length > 0) return algo
+      }
+      throw new Error('Could not generate a quiz right now. Please try again in a moment.')
+    }
+  }
 
   // First race: start immediately, no excerpt (don't block on the text fetch).
   const firstRace = tryKeylessLLM(book, gradeValue, questionCount, null, signal)

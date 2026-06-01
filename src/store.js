@@ -10,6 +10,7 @@ import { computeLevel, badgesFor } from './gamification.js'
 
 const PROFILES_KEY = 'bookquiz_profiles_v1'
 const FEEDBACK_KEY = 'bookquiz_feedback_v1'
+const APIKEY_KEY = 'bookquiz_gemini_key_v1'
 
 function load(key, fallback) {
   try {
@@ -212,4 +213,31 @@ export function getFeedback(book) {
 // Export all collected feedback (e.g. to later train/evaluate a model).
 export function exportFeedback() {
   return JSON.stringify(state.feedback, null, 2)
+}
+
+// ---- optional user-supplied Gemini API key --------------------------------
+// Stored separately (not inside a profile) so it persists across sign-in/out
+// on the device. Sent only to Google, never to any server we run.
+
+export function getApiKey() {
+  try {
+    return localStorage.getItem(APIKEY_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+export function setApiKey(value) {
+  try {
+    const v = (value || '').trim()
+    if (v) localStorage.setItem(APIKEY_KEY, v)
+    else localStorage.removeItem(APIKEY_KEY)
+  } catch {
+    /* ignore */
+  }
+  emit()
+}
+
+export function hasApiKey() {
+  return getApiKey().length > 0
 }
