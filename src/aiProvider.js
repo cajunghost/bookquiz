@@ -1,9 +1,9 @@
-// Keyless quiz generation. Strategy, in order:
-//   1. If the book has free public-domain text (Project Gutenberg), fetch an
-//      excerpt to ground the questions.
-//   2. Ask a free, no-key LLM endpoint to write the quiz — trying several
-//      models/transports in turn so a single busy model doesn't fail the whole
-//      request.
+// Keyless quiz generation. Strategy:
+//   1. Kick off the free-text fetch (Project Gutenberg) and the LLM attempts
+//      together so we don't pay for them sequentially.
+//   2. Race several free, no-key models/transports in parallel; the FIRST valid
+//      quiz wins and the rest are aborted. This is much faster than trying them
+//      one at a time.
 //   3. If every model fails AND we have full text, fall back to a deterministic
 //      algorithmic quiz built directly from the real text (no AI, never fails).
 //
@@ -12,29 +12,31 @@
 import { SYSTEM_PROMPT, buildPrompt, extractJson, normalizeQuiz } from './quizCore.js'
 import { fetchGutenbergText, excerptFor, buildAlgorithmicQuiz } from './gutenberg.js'
 
-const POLLINATIONS_POST = 'https://text.pollinations.ai/'
-const POLLINATIONS_GET = 'https://text.pollinations.ai/'
+const POLLINATIONS_URL = 'https://text.pollinations.ai/'
 
-// Free, no-key models exposed by Pollinations, tried in order. Different models
-// have independent load/availability, so cycling through them greatly raises
-// the success rate during peak times.
-const MODELS = ['openai', 'openai-fast', 'mistral', 'llama', 'openai-large']
+// Free, no-key models. We race a spread of them at once; whichever returns a
+// valid quiz first wins.
+const POST_MODELS = ['openai', 'openai-fast', 'mistral']
+const GET_MODELS = ['openai-fast', 'llama']
 
-function withTimeout(signal, ms) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), ms)
-  if (signal) signal.addEventListener('abort', () => controller.abort(), { once: true })
-  return { signal: controller.signal, done: () => clearTimeout(timer) }
+// Per-attempt timeout. Each racer gets its own; the overall request resolves as
+// soon as any one succeeds, so this is an upper bound per model, not a sum.
+const ATTEMPT_TIMEOUT_MS = 30000
+
+function linkSignal(parent, controller) {
+  if (parent) parent.addEventListener('abort', () => controller.abort(), { once: true })
 }
 
-// POST transport (preferred: full system+user messages, JSON mode).
-async function pollinationsPost(model, messages, signal) {
-  const t = withTimeout(signal, 45000)
+// POST transport: full system+user messages, JSON mode.
+async function pollinationsPost(model, messages, parentSignal) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS)
+  linkSignal(parentSignal, controller)
   try {
-    const res = await fetch(POLLINATIONS_POST, {
+    const res = await fetch(POLLINATIONS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: t.signal,
+      signal: controller.signal,
       body: JSON.stringify({
         messages,
         model,
@@ -48,27 +50,55 @@ async function pollinationsPost(model, messages, signal) {
   } catch {
     return null
   } finally {
-    t.done()
+    clearTimeout(timer)
   }
 }
 
-// GET transport (fallback: prompt in the URL path). Some models/edges respond
-// to one transport when the other is briefly unavailable.
-async function pollinationsGet(model, prompt, signal) {
-  const t = withTimeout(signal, 45000)
+// GET transport: prompt in the URL path (some edges respond when POST is busy).
+async function pollinationsGet(model, prompt, parentSignal) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS)
+  linkSignal(parentSignal, controller)
   try {
     const url =
-      POLLINATIONS_GET +
+      POLLINATIONS_URL +
       encodeURIComponent(prompt) +
       `?model=${encodeURIComponent(model)}&json=true&private=true&referrer=bookquiz`
-    const res = await fetch(url, { signal: t.signal })
+    const res = await fetch(url, { signal: controller.signal })
     if (!res.ok) return null
     return extractJson(await res.text())
   } catch {
     return null
   } finally {
-    t.done()
+    clearTimeout(timer)
   }
+}
+
+// Resolve with the first racer that yields a valid quiz; resolve null only when
+// ALL racers have finished without one. (Promise.any can't express "first
+// truthy", so we implement it directly.)
+function firstValid(makers, questionCount) {
+  return new Promise((resolve) => {
+    let remaining = makers.length
+    let settled = false
+    if (remaining === 0) return resolve(null)
+    for (const make of makers) {
+      Promise.resolve(make())
+        .then((parsed) => {
+          if (settled) return
+          const quiz = parsed ? normalizeQuiz(parsed, questionCount) : null
+          if (quiz && quiz.questions.length > 0) {
+            settled = true
+            resolve(quiz)
+          } else if (--remaining === 0) {
+            resolve(null)
+          }
+        })
+        .catch(() => {
+          if (!settled && --remaining === 0) resolve(null)
+        })
+    }
+  })
 }
 
 async function tryKeylessLLM(book, gradeValue, questionCount, excerpt, signal) {
@@ -77,28 +107,20 @@ async function tryKeylessLLM(book, gradeValue, questionCount, excerpt, signal) {
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: userPrompt },
   ]
-  // Combined single-shot prompt for the GET transport (no separate system role).
   const combined = `${SYSTEM_PROMPT}\n\n${userPrompt}`
 
-  for (const model of MODELS) {
-    if (signal?.aborted) return null
-    const viaPost = await pollinationsPost(model, messages, signal)
-    if (viaPost) {
-      const quiz = normalizeQuiz(viaPost, questionCount)
-      if (quiz.questions.length > 0) return quiz
-    }
-  }
-  // If every POST attempt came back empty/unparseable, try the GET transport
-  // on the two most capable models.
-  for (const model of ['openai', 'mistral']) {
-    if (signal?.aborted) return null
-    const viaGet = await pollinationsGet(model, combined, signal)
-    if (viaGet) {
-      const quiz = normalizeQuiz(viaGet, questionCount)
-      if (quiz.questions.length > 0) return quiz
-    }
-  }
-  return null
+  // Abort the losing in-flight requests once we have a winner.
+  const raceController = new AbortController()
+  linkSignal(signal, raceController)
+
+  const makers = [
+    ...POST_MODELS.map((m) => () => pollinationsPost(m, messages, raceController.signal)),
+    ...GET_MODELS.map((m) => () => pollinationsGet(m, combined, raceController.signal)),
+  ]
+
+  const quiz = await firstValid(makers, questionCount)
+  raceController.abort() // cancel any stragglers
+  return quiz
 }
 
 /**
@@ -114,24 +136,39 @@ export async function generateQuiz({ book, gradeValue, questionCount, signal }) 
     throw new Error('No book selected. Search for a book first, then generate the quiz.')
   }
 
-  // 1. Public-domain full text for grounding / fallback, when available.
-  let fullText = null
-  if (book.freeText && book.pgId) {
-    fullText = await fetchGutenbergText(book.pgId, book.formats, signal)
-  }
-  const excerpt = excerptFor(fullText)
+  // 1. For public-domain books, fetch the full text IN PARALLEL with a first
+  //    (un-grounded) LLM race, so grounding never adds latency on the happy
+  //    path. If the text arrives and the ungrounded race lost, we re-race with
+  //    the excerpt.
+  const textPromise =
+    book.freeText && book.pgId
+      ? fetchGutenbergText(book.pgId, book.formats, signal).catch(() => null)
+      : Promise.resolve(null)
 
-  // 2. Free keyless LLM, across several models + transports.
-  const quiz = await tryKeylessLLM(book, gradeValue, questionCount, excerpt, signal)
-  if (quiz) {
-    if (fullText && !quiz.sourceNote) {
-      quiz.sourceNote = 'Grounded in an excerpt of the book’s public-domain text.'
+  // First race: start immediately, no excerpt (don't block on the text fetch).
+  const firstRace = tryKeylessLLM(book, gradeValue, questionCount, null, signal)
+
+  // Resolve the text fetch alongside the first race.
+  const [firstQuiz, fullText] = await Promise.all([firstRace, textPromise])
+  if (firstQuiz) {
+    if (fullText && !firstQuiz.sourceNote) {
+      firstQuiz.sourceNote = 'Grounded in the book’s public-domain text.'
     }
-    return quiz
+    return firstQuiz
   }
 
-  // 3. Deterministic fallback from real text (only possible with full text).
+  // 2. If we now have full text, try once more grounded in a real excerpt.
   if (fullText) {
+    const excerpt = excerptFor(fullText)
+    const grounded = await tryKeylessLLM(book, gradeValue, questionCount, excerpt, signal)
+    if (grounded) {
+      if (!grounded.sourceNote) {
+        grounded.sourceNote = 'Grounded in an excerpt of the book’s public-domain text.'
+      }
+      return grounded
+    }
+
+    // 3. Deterministic fallback from real text — never fails, no AI.
     const algo = buildAlgorithmicQuiz({ fullText, title: book.title, requestedCount: questionCount })
     if (algo && algo.questions.length > 0) return algo
   }
