@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { getApiKey, setApiKey } from '../store.js'
 
-// Optional "bring your own key" panel. The app works with no key (free shared
-// service); adding a free Google AI Studio (Gemini) key gives higher-quality,
-// more reliable generation. The key is stored only in this browser and sent
+// Required API-key panel. Quizzes are generated with the user's own free Google
+// AI Studio (Gemini) key. Saving a key updates the reactive store, which unlocks
+// the search/generate UI in App. The key is stored only in this browser and sent
 // directly to Google.
 
 export default function KeySettings() {

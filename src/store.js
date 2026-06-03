@@ -40,6 +40,7 @@ let state = {
   activeId: null,
   profiles: {}, // id -> profile
   feedback: {}, // bookKey -> [ {question, reason, ts} ]
+  apiKey: '', // user-supplied Gemini key (mirrored to localStorage)
 }
 
 function hydrate() {
@@ -48,6 +49,7 @@ function hydrate() {
     activeId: p.activeId || null,
     profiles: p.profiles || {},
     feedback: load(FEEDBACK_KEY, {}),
+    apiKey: load(APIKEY_KEY, ''),
   }
 }
 hydrate()
@@ -220,21 +222,15 @@ export function exportFeedback() {
 // on the device. Sent only to Google, never to any server we run.
 
 export function getApiKey() {
-  try {
-    return localStorage.getItem(APIKEY_KEY) || ''
-  } catch {
-    return ''
-  }
+  return state.apiKey || ''
 }
 
 export function setApiKey(value) {
-  try {
-    const v = (value || '').trim()
-    if (v) localStorage.setItem(APIKEY_KEY, v)
-    else localStorage.removeItem(APIKEY_KEY)
-  } catch {
-    /* ignore */
-  }
+  const v = (value || '').trim()
+  // Replace the state object so useSyncExternalStore detects the change and
+  // re-renders subscribers (this is what unlocks the search/generate UI).
+  state = { ...state, apiKey: v }
+  save(APIKEY_KEY, v)
   emit()
 }
 
