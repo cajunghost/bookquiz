@@ -2,18 +2,20 @@ import { useState, useSyncExternalStore } from 'react'
 import { GRADE_LEVELS, QUESTION_COUNTS, gradeLabel as labelFor } from './gradeLevels.js'
 import { resolveBook } from './bookLookup.js'
 import { generateQuiz } from './aiProvider.js'
-import { subscribe, getState, getActiveProfile } from './store.js'
+import { subscribe, getState, getActiveProfile, hasApiKey } from './store.js'
 import BookCard from './components/BookCard.jsx'
 import BookSearch from './components/BookSearch.jsx'
 import Quiz from './components/Quiz.jsx'
 import AccountBar from './components/AccountBar.jsx'
 import ProfilePanel from './components/ProfilePanel.jsx'
 import KeySettings from './components/KeySettings.jsx'
+import HowToUse from './components/HowToUse.jsx'
 
 export default function App() {
-  // Reactively track the store (profiles/points/history).
+  // Reactively track the store (profiles/points/history/key).
   useSyncExternalStore(subscribe, getState)
   const profile = getActiveProfile()
+  const keyReady = hasApiKey()
 
   const [query, setQuery] = useState('')
   const [gradeLevel, setGradeLevel] = useState('5')
@@ -106,12 +108,20 @@ export default function App() {
 
       <main className="container">
         <KeySettings />
+        <HowToUse />
+
+        {!keyReady && (
+          <div className="key-required-note" role="status">
+            🔑 Add your free Google AI Studio key above to start generating quizzes.
+          </div>
+        )}
+
         <form className="search-panel" onSubmit={(e) => { e.preventDefault(); onGenerate() }}>
           <label className="field field--query">
             <span className="field-label">Search for a book</span>
             <BookSearch
               value={query}
-              disabled={busy}
+              disabled={busy || !keyReady}
               onChange={(v) => {
                 setQuery(v)
                 if (book || quiz) resetDownstream()
@@ -152,12 +162,18 @@ export default function App() {
               </select>
             </label>
 
-            <button type="submit" className="btn btn--accent find-btn" disabled={!query.trim() || busy}>
+            <button
+              type="submit"
+              className="btn btn--accent find-btn"
+              disabled={!query.trim() || busy || !keyReady}
+            >
               {phase === 'resolving'
                 ? 'Finding…'
                 : phase === 'generating'
                   ? 'Building…'
-                  : 'Generate quiz'}
+                  : keyReady
+                    ? 'Generate quiz'
+                    : 'Add key to start'}
             </button>
           </div>
         </form>

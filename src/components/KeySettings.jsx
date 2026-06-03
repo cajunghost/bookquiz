@@ -25,24 +25,23 @@ export default function KeySettings() {
   }
 
   return (
-    <details className="key-panel" open={false}>
+    <details className="key-panel" open={!has}>
       <summary className="key-summary">
         <span>
-          Use your own AI key{' '}
+          Your Google AI Studio key{' '}
           {has ? (
-            <span className="key-status key-status--ok">key saved · higher quality</span>
+            <span className="key-status key-status--ok">key saved</span>
           ) : (
-            <span className="key-status key-status--opt">optional</span>
+            <span className="key-status key-status--need">required</span>
           )}
         </span>
       </summary>
 
       <div className="key-body">
         <p className="key-intro">
-          BookQuiz works with <strong>no key</strong> using a free shared service. For
-          faster, higher-quality quizzes, add your own <strong>free</strong> Google AI
-          Studio (Gemini) key — it’s stored only in this browser and sent directly to
-          Google.
+          BookQuiz uses your own <strong>free</strong> Google AI Studio (Gemini) key to
+          write quizzes. It’s stored only in this browser and sent directly to Google —
+          never to any server. Follow the steps below to get one in about a minute.
         </p>
 
         <div className="key-input-row">

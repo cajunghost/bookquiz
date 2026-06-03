@@ -6,34 +6,17 @@ grade and length, and get a multiple-choice quiz with an answer key, explanation
 a comprehension-skill tag on every question.
 
 It runs **entirely in your browser** and is hosted on **GitHub Pages** — there is no
-backend and **no API key or sign-up of any kind**. As you type, an autocomplete dropdown
-searches open book databases (**Open Library** + **Project Gutenberg**); pick a result or
-paste an ISBN, choose a grade and length, and get a quiz.
+backend. You bring a **free Google AI Studio (Gemini) key** (one-minute setup, no
+billing); it's stored only on your device. As you type, an autocomplete dropdown searches
+open book databases (**Open Library**, **Google Books**, **Project Gutenberg**); pick a
+result or paste an ISBN, choose a grade and length, and get a quiz. Public-domain
+(Project Gutenberg) books are grounded in the book's **actual text** for maximum accuracy.
 
-### How quizzes are generated (keyless)
+### Step 1 — Add your free Google AI Studio (Gemini) key (required)
 
-No key is required. The app generates a quiz in this order:
-
-1. **Free AI endpoint** — questions are written by a free, no-key LLM service
-   (**Pollinations**), called directly from the browser. Works for any book.
-2. **Public-domain grounding** — when the book is on **Project Gutenberg**, its real
-   full text is fetched and an excerpt is fed to the model so questions are grounded in
-   the actual words of the book.
-3. **Algorithmic fallback (no AI)** — if the free AI service is unavailable and the book
-   is public-domain, the app builds vocabulary-in-context questions deterministically
-   from the real text. This path can't rate-limit or go down.
-
-> Because the free AI endpoint is a shared community service, generation can occasionally
-> be slow or busy — just retry. Public-domain (Project Gutenberg) titles are the most
-> reliable since they have the no-AI fallback.
-
-### Optional: bring your own AI key (higher quality)
-
-You can optionally add a **free Google AI Studio (Gemini)** key for faster, higher-quality
-quizzes. When a key is saved, it's used first; if it ever fails, the app automatically
-falls back to the free keyless path. The key is stored **only in your browser** and sent
-directly to Google — never to any server. Open **“Use your own AI key”** at the top of the
-app to add it.
+Quizzes are generated with your own **free** Google AI Studio key. It's stored **only in
+your browser** and sent directly to Google — never to any server. Open **“Your Google AI
+Studio key”** at the top of the app to add it.
 
 **Get a free key (~1 minute):**
 
@@ -42,7 +25,21 @@ app to add it.
 3. Choose or create a project if asked, then **Create**.
 4. Copy the key (starts with `AIza…`), paste it into the app, and **Save key**.
 
-The free tier requires no billing. Remove the key any time to return to the free service.
+The free tier requires no billing. (Using your own key avoids the rate-limit and "busy"
+errors that a shared service runs into.)
+
+### Step 2 — Create a quiz
+
+1. **Search for a book** — type a title or author in the search box and pick from the
+   dropdown (Open Library / Google Books / Project Gutenberg), or paste an ISBN.
+2. **Choose a grade level** (K–12) and **how many questions** (5/10/25/50).
+3. Tap **Generate quiz**, answer the questions, and **Submit** to see your score,
+   explanations, and points.
+4. Use the **⚑ Report** button under any question to flag inaccuracies — future quizzes
+   for that book will avoid them.
+
+Books with a **“Free text”** badge use the book’s actual public-domain text, so their
+quizzes are the most accurate.
 
 ### Book sources (free & open)
 
@@ -54,14 +51,14 @@ The autocomplete searches several open catalogs in parallel and merges the resul
 - **Project Gutenberg** via the **Gutendex** API — free public-domain books; these are
   flagged **"Free text"** and are the most reliable for quiz generation.
 
-All are queried directly from the browser with no API key. If one source is rate-limited
-or down, the others still return results.
+All book searches are free and need no key. If one source is rate-limited or down, the
+others still return results.
 
-### Quiz models (free & keyless)
+### Quiz generation
 
-Generation tries several free, no-key models in turn (via Pollinations) across two
-transports, so a single busy model doesn't fail the request — then falls back to the
-deterministic public-domain text path described above.
+Quizzes are written by **Google Gemini** (`gemini-2.5-flash`) using your own free key,
+called directly from the browser with JSON-schema structured output. For public-domain
+books, the prompt is grounded in a real excerpt of the book's text.
 
 ## Live site
 
@@ -69,14 +66,6 @@ deterministic public-domain text path described above.
 
 > **The site only loads if this repository is Public.** GitHub Pages on the free plan
 > will not serve a private repo. If the URL 404s, see **Make it live** below.
-
-## Use it
-
-1. Open the site.
-2. Type a book title or author — pick from the autocomplete dropdown (or paste an ISBN).
-3. Choose a grade level and question count.
-4. **Generate**, answer the questions, and review your score with per-question explanations.
-
 
 ## Make it live (one-time, owner only)
 
@@ -114,7 +103,7 @@ npm install
 npm run dev      # http://localhost:5173
 ```
 
-No `.env`, key, or backend needed.
+No `.env` or backend needed. Add your free Gemini key in the app's key panel to generate.
 
 ```bash
 npm run build    # outputs static site to dist/
@@ -123,11 +112,11 @@ npm run preview  # serve the built site locally
 
 ## How questions are grounded
 
-For **public-domain** books (Project Gutenberg), questions draw on the book's **actual
-full text** — either fed to the AI as an excerpt, or used to build questions
-algorithmically with no AI at all. For other books, the AI works from metadata
+For **public-domain** books (Project Gutenberg), the prompt is grounded in an excerpt of
+the book's **actual full text**. For other books, the AI works from metadata
 (descriptions, subjects, opening lines) plus its knowledge of the work; full copyrighted
-text is not retrieved. A "source note" on each quiz states what it was based on. **Review
+text is not retrieved. A "source note" on each quiz states what it was based on, and the
+**⚑ Report** button feeds inaccurate questions back into future prompts. **Review
 questions for accuracy before classroom use.**
 
 ## Project layout
@@ -142,16 +131,17 @@ public/
   .nojekyll
 src/
   main.jsx               React entry (+ error boundary, #root guard, SW register)
-  App.jsx                account bar + search → generate → quiz flow (no key)
+  App.jsx                account bar + key gate + search → generate → quiz flow
   gradeLevels.js         K-12 levels + per-band comprehension guidance
   bookSearch.js          Autocomplete: Open Library + Google Books + Gutenberg
   bookLookup.js          Resolve a typed title/ISBN
   quizCore.js            Shared prompt (+ feedback injection), JSON parse, normalize
-  aiProvider.js          Keyless generation: parallel model race + Gutenberg fallback
-  gutenberg.js           Fetch public-domain text; algorithmic (no-AI) quiz
+  gemini.js              Google Gemini call (user's key)
+  aiProvider.js          Key-gated generation + Gutenberg text grounding
+  gutenberg.js           Fetch public-domain text excerpt for grounding
   gamification.js        Points tiers, levels, badge catalog
-  store.js               Local-first accounts, points, history, feedback
-  components/            BookSearch, BookCard, Quiz, ScoreResult, AccountBar, ProfilePanel
+  store.js               Local-first accounts, points, history, feedback, API key
+  components/            KeySettings, HowToUse, BookSearch, BookCard, Quiz, ScoreResult, AccountBar, ProfilePanel
   styles.css
 .github/workflows/
   deploy.yml             build + publish to GitHub Pages on push to main
@@ -208,7 +198,7 @@ the GitHub Pages deploy.)
 
 ## Tech
 
-React + Vite, deployed as a static site to GitHub Pages. **Keyless AI:** Pollinations
-(free, no-key LLM) with a deterministic Project Gutenberg full-text fallback. Book data:
-Open Library, Project Gutenberg (Gutendex), and Google Books — all called directly from
-the browser with no key.
+React + Vite, deployed as a static site to GitHub Pages. **AI:** Google Gemini
+(`gemini-2.5-flash`) via the user's own free key, with Project Gutenberg full-text
+grounding. Book data: Open Library, Google Books, and Project Gutenberg (Gutendex) —
+all called directly from the browser.
