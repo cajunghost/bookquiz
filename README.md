@@ -66,10 +66,16 @@ series arc and other installments, so every question is answerable by someone wh
 only this book. Series detection uses Open Library's `series` metadata when available,
 with a general single-volume instruction as a fallback.
 
-**Two-pass refinement for grade fit & accuracy.** After the first draft, a second Gemini
-pass reviews the quiz and fixes any question that isn't specific to this book, leaks the
-series, isn't verifiable from the text, or misfits the chosen grade level. Reading-level
-metadata (e.g. Lexile) from catalog sources is used to fine-tune difficulty when present.
+**Common Core grade anchors.** Each grade (K–12) carries a paraphrased Common Core
+"Reading: Literature" (RL) standard that's injected into the prompt, so questions target
+the specific comprehension demands expected at that grade — not just a broad band.
+
+**Two-pass refinement (toggleable).** When **Higher accuracy** is on (default), a second
+Gemini pass reviews the quiz and fixes any question that isn't specific to this book,
+leaks the series, isn't verifiable from the text, or misfits the chosen grade level —
+roughly 2× the quota and a bit slower. Turn it off in the key panel for faster, single-pass
+generation. Reading-level metadata (e.g. Lexile) from catalog sources is used to fine-tune
+difficulty when present.
 
 > **A note on Quizlet/other quiz apps:** those services have no public API, block
 > cross-origin browser requests, and prohibit scraping, so a static site cannot legally

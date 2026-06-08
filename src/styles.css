@@ -1026,3 +1026,20 @@ h3,
   font-size: 0.92rem;
   text-align: center;
 }
+
+/* ---- Two-pass refine toggle ---- */
+.refine-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 0.8rem 0.9rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.refine-row input { margin-top: 0.2rem; width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+.refine-text { display: flex; flex-direction: column; }
+.refine-text strong { font-size: 0.92rem; }
+.refine-sub { font-size: 0.8rem; color: var(--ink-soft); margin-top: 0.15rem; }

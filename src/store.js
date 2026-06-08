@@ -11,6 +11,7 @@ import { computeLevel, badgesFor } from './gamification.js'
 const PROFILES_KEY = 'bookquiz_profiles_v1'
 const FEEDBACK_KEY = 'bookquiz_feedback_v1'
 const APIKEY_KEY = 'bookquiz_gemini_key_v1'
+const REFINE_KEY = 'bookquiz_refine_v1'
 
 function load(key, fallback) {
   try {
@@ -41,6 +42,7 @@ let state = {
   profiles: {}, // id -> profile
   feedback: {}, // bookKey -> [ {question, reason, ts} ]
   apiKey: '', // user-supplied Gemini key (mirrored to localStorage)
+  refine: true, // run the second-pass refinement (quality vs. speed)
 }
 
 function hydrate() {
@@ -50,6 +52,7 @@ function hydrate() {
     profiles: p.profiles || {},
     feedback: load(FEEDBACK_KEY, {}),
     apiKey: load(APIKEY_KEY, ''),
+    refine: load(REFINE_KEY, true),
   }
 }
 hydrate()
@@ -236,4 +239,17 @@ export function setApiKey(value) {
 
 export function hasApiKey() {
   return getApiKey().length > 0
+}
+
+// ---- refine-pass setting (max quality vs. faster) -------------------------
+
+export function getRefine() {
+  return state.refine !== false
+}
+
+export function setRefine(value) {
+  const v = Boolean(value)
+  state = { ...state, refine: v }
+  save(REFINE_KEY, v)
+  emit()
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getApiKey, setApiKey } from '../store.js'
+import { getApiKey, setApiKey, getRefine, setRefine } from '../store.js'
 
 // Required API-key panel. Quizzes are generated with the user's own free Google
 // AI Studio (Gemini) key. Saving a key updates the reactive store, which unlocks
@@ -11,6 +11,7 @@ export default function KeySettings() {
   const [show, setShow] = useState(false)
   const [saved, setSaved] = useState(false)
   const has = getApiKey().length > 0
+  const refine = getRefine()
 
   function save() {
     setApiKey(value)
@@ -89,6 +90,22 @@ export default function KeySettings() {
             requests to Google. Remove it any time to return to the free service.
           </p>
         </div>
+
+        <label className="refine-row">
+          <input
+            type="checkbox"
+            checked={refine}
+            onChange={(e) => setRefine(e.target.checked)}
+          />
+          <span className="refine-text">
+            <strong>Higher accuracy (two-pass review)</strong>
+            <span className="refine-sub">
+              {refine
+                ? 'On — a second AI pass double-checks each question is correct and specific to this book. Slower, uses ~2× of your key’s quota.'
+                : 'Off — faster, one pass. Turn on for best book-specific accuracy.'}
+            </span>
+          </span>
+        </label>
       </div>
     </details>
   )

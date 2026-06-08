@@ -99,3 +99,27 @@ export function getGradeGuidance(value) {
       'Demand close reading, analysis, and synthesis. Questions should require justified interpretation rather than recall, while remaining defensible from the text. Distractors should be subtly wrong and reflect sophisticated misreadings.',
   }
 }
+
+// Common Core "Reading: Literature" grade-level anchors. These paraphrase the
+// CCSS RL expectations per grade and are injected into the prompt so the model
+// targets the specific comprehension demands a student at that grade is expected
+// to meet — sharpening grade calibration beyond the broad band guidance above.
+const CCSS_RL = {
+  K: 'CCSS RL.K: with prompting, identify characters, settings, and major events; ask/answer about key details; recognize common story types.',
+  1: 'CCSS RL.1: ask and answer questions about key details; retell stories and include the central message/lesson; describe characters, settings, and major events using details.',
+  2: 'CCSS RL.2: recount stories and determine the central message/lesson/moral; describe how characters respond to events and challenges; describe story structure (beginning/middle/end).',
+  3: 'CCSS RL.3: ask/answer referring explicitly to the text; determine the central message/lesson and how it is conveyed through details; describe characters traits/motivations/feelings and how their actions affect events.',
+  4: 'CCSS RL.4: refer to details and examples when explaining the text and drawing inferences; determine theme from details; describe a character/setting/event in depth using specific details.',
+  5: 'CCSS RL.5: quote accurately when explaining and drawing inferences; determine theme from how characters respond to challenges; compare/contrast characters, settings, or events using details.',
+  6: 'CCSS RL.6: cite textual evidence to support analysis; determine theme and how it is conveyed; describe how the plot unfolds and how characters change; analyze how point of view is developed.',
+  7: 'CCSS RL.7: cite several pieces of evidence; analyze theme development over the course of the text; analyze how setting/plot/character interact; analyze how an author develops points of view.',
+  8: 'CCSS RL.8: cite the strongest evidence and analyze where the text leaves matters uncertain; analyze theme development including its relationship to characters/setting/plot; analyze lines of dialogue/incidents that propel action or reveal character; analyze differences in points of view (suspense, irony).',
+  9: 'CCSS RL.9-10: cite strong/thorough evidence; analyze how theme emerges and is shaped/refined by details; analyze how complex characters develop and advance the plot/theme; analyze point of view/cultural perspective.',
+  10: 'CCSS RL.9-10: cite strong/thorough evidence including inferences; analyze in detail how a theme develops over the text; analyze how complex characters with conflicting motivations develop; analyze a particular point of view or cultural experience.',
+  11: 'CCSS RL.11-12: cite evidence including matters left uncertain; analyze how two or more themes interact and build on one another; analyze the impact of authorial choices about structure, character, and order of events.',
+  12: 'CCSS RL.11-12: cite thorough evidence and analyze ambiguity; analyze how multiple themes interact and are developed; analyze the impact of authorial choices regarding structure, point of view, and aesthetic effect.',
+}
+
+export function getGradeAnchor(value) {
+  return CCSS_RL[String(value)] || null
+}

@@ -5,7 +5,7 @@
 // ground the questions in the book's actual words.
 
 import { excerptFor, fetchGutenbergText } from './gutenberg.js'
-import { getApiKey } from './store.js'
+import { getApiKey, getRefine } from './store.js'
 import { generateWithGemini } from './gemini.js'
 
 export class MissingKeyError extends Error {
@@ -45,6 +45,7 @@ export async function generateQuiz({ book, gradeValue, questionCount, signal }) 
     questionCount,
     excerpt,
     signal,
+    refine: getRefine(),
   })
   if (excerpt && !quiz.sourceNote) {
     quiz.sourceNote = 'Grounded in an excerpt of the book’s public-domain text.'

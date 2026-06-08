@@ -2,7 +2,7 @@
 // grade-calibrated prompt, the desired JSON shape, and a normalizer that
 // validates/repairs whatever the model returns.
 
-import { getGradeGuidance, gradeLabel } from './gradeLevels.js'
+import { getGradeGuidance, gradeLabel, getGradeAnchor } from './gradeLevels.js'
 
 export const SYSTEM_PROMPT = `You are an expert K-12 reading specialist and assessment designer. You create high-quality, multiple-choice reading-comprehension quizzes that measure how well a student understood a specific book.
 
@@ -30,6 +30,7 @@ export function buildPrompt(book, gradeValue, questionCount, excerpt, feedback) 
   }
   const g = getGradeGuidance(gradeValue)
   const label = gradeLabel(gradeValue)
+  const anchor = getGradeAnchor(gradeValue)
   const facts = [`Title: ${book.title}`]
   if (book.subtitle) facts.push(`Subtitle: ${book.subtitle}`)
   if (book.authors?.length) facts.push(`Author(s): ${book.authors.join(', ')}`)
@@ -92,6 +93,7 @@ Vocabulary: ${g.vocabulary}
 Sentence length: ${g.sentenceLength}
 Question style: ${g.questionStyle}
 Prioritize these comprehension skills: ${g.skills.join('; ')}.
+${anchor ? `Align the questions to these grade-level standards: ${anchor}` : ''}
 
 === REQUEST ===
 Generate EXACTLY ${questionCount} questions appropriate for ${label}, following all rules. Every question must be answerable by someone who has read ONLY this specific book. Output only the JSON object described above.`
@@ -103,6 +105,7 @@ Generate EXACTLY ${questionCount} questions appropriate for ${label}, following 
 export function buildRefinePrompt(book, gradeValue, draftQuiz, excerpt) {
   const g = getGradeGuidance(gradeValue)
   const label = gradeLabel(gradeValue)
+  const anchor = getGradeAnchor(gradeValue)
   const seriesLine = book.series
     ? `This title is part of the "${book.series}" series — every question must concern ONLY this volume ("${book.title}"), never other books or the series arc.`
     : `If "${book.title}" is part of a series, every question must concern ONLY this volume, never other books or the series arc.`
@@ -117,7 +120,7 @@ export function buildRefinePrompt(book, gradeValue, draftQuiz, excerpt) {
 Revise the quiz so that EVERY question:
 - is specific to THIS book, answerable by someone who read only this volume. ${seriesLine}
 - is factually verifiable from the book (fix or replace anything you are not confident is accurate).
-- fits ${label}: ${g.vocabulary} ${g.questionStyle}
+- fits ${label}: ${g.vocabulary} ${g.questionStyle}${anchor ? ` Align to: ${anchor}` : ''}
 - has exactly 4 options with exactly one correct answer, plus a grounded explanation and a skill tag.
 
 Keep the same number of questions if they can be made good; drop a question only if it cannot be made accurate and book-specific.
