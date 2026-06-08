@@ -60,6 +60,23 @@ Quizzes are written by **Google Gemini** (`gemini-2.5-flash`) using your own fre
 called directly from the browser with JSON-schema structured output. For public-domain
 books, the prompt is grounded in a real excerpt of the book's text.
 
+**Book-specific, not series-wide.** The prompt enforces that questions test only *this
+single volume* — if the title is part of a series, the model is told to ignore the wider
+series arc and other installments, so every question is answerable by someone who read
+only this book. Series detection uses Open Library's `series` metadata when available,
+with a general single-volume instruction as a fallback.
+
+**Two-pass refinement for grade fit & accuracy.** After the first draft, a second Gemini
+pass reviews the quiz and fixes any question that isn't specific to this book, leaks the
+series, isn't verifiable from the text, or misfits the chosen grade level. Reading-level
+metadata (e.g. Lexile) from catalog sources is used to fine-tune difficulty when present.
+
+> **A note on Quizlet/other quiz apps:** those services have no public API, block
+> cross-origin browser requests, and prohibit scraping, so a static site cannot legally
+> or technically pull questions from them. Instead of a fake integration, grade-level
+> refinement is done with real catalog reading-level metadata plus the model self-review
+> pass above — which produces grade-appropriate, book-specific questions directly.
+
 ## Live site
 
 **https://cajunghost.github.io/bookquiz/**

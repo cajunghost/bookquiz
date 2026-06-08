@@ -4,7 +4,13 @@
 // and is sent directly to Google — no server. When no key is set, the app uses
 // the keyless path instead (see aiProvider.js).
 
-import { SYSTEM_PROMPT, buildPrompt, extractJson, normalizeQuiz } from './quizCore.js'
+import {
+  SYSTEM_PROMPT,
+  buildPrompt,
+  buildRefinePrompt,
+  extractJson,
+  normalizeQuiz,
+} from './quizCore.js'
 import { getFeedback } from './store.js'
 
 const MODEL = 'gemini-2.5-flash'
@@ -45,20 +51,15 @@ const SCHEMA = {
  * Returns a normalized quiz, or throws Error (with a friendly message) on
  * failure so the caller can fall back to the keyless path.
  */
-export async function generateWithGemini({ apiKey, book, gradeValue, questionCount, excerpt, signal }) {
-  if (!apiKey) throw new Error('No Gemini API key provided.')
-  if (!book || !book.title) throw new Error('No book selected.')
-
-  const feedback = getFeedback(book)
+// One Gemini call. systemText may be null (used for the refine pass, where the
+// instructions live in the user turn). Returns a normalized quiz or null.
+async function callGemini({ apiKey, systemText, userText, questionCount, signal }) {
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent` +
     `?key=${encodeURIComponent(apiKey)}`
 
   const body = {
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-    contents: [
-      { role: 'user', parts: [{ text: buildPrompt(book, gradeValue, questionCount, excerpt, feedback) }] },
-    ],
+    contents: [{ role: 'user', parts: [{ text: userText }] }],
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: SCHEMA,
@@ -67,6 +68,7 @@ export async function generateWithGemini({ apiKey, book, gradeValue, questionCou
       thinkingConfig: { thinkingBudget: 0 },
     },
   }
+  if (systemText) body.systemInstruction = { parts: [{ text: systemText }] }
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 60000)
@@ -90,22 +92,68 @@ export async function generateWithGemini({ apiKey, book, gradeValue, questionCou
 
   if (!res.ok) {
     const msg = data?.error?.message || `Gemini request failed (${res.status}).`
-    const keyProblem = res.status === 400 || res.status === 403 || /api[_ ]?key|API_KEY_INVALID|PERMISSION/i.test(msg)
+    const keyProblem =
+      res.status === 400 || res.status === 403 || /api[_ ]?key|API_KEY_INVALID|PERMISSION/i.test(msg)
     const err = new Error(
       keyProblem
-        ? 'Your Gemini API key was rejected. Check the key in your settings (or remove it to use the free service).'
+        ? 'Your Gemini API key was rejected. Check the key at the top of the page.'
         : msg,
     )
     err.keyProblem = keyProblem
     throw err
   }
 
-  const candidate = data?.candidates?.[0]
-  const text = candidate?.content?.parts?.map((p) => p?.text || '').join('') || ''
+  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p?.text || '').join('') || ''
   const parsed = extractJson(text)
-  const quiz = parsed ? normalizeQuiz(parsed, questionCount) : null
-  if (!quiz || quiz.questions.length === 0) {
+  return parsed ? normalizeQuiz(parsed, questionCount) : null
+}
+
+export async function generateWithGemini({
+  apiKey,
+  book,
+  gradeValue,
+  questionCount,
+  excerpt,
+  signal,
+  refine = true,
+}) {
+  if (!apiKey) throw new Error('No Gemini API key provided.')
+  if (!book || !book.title) throw new Error('No book selected.')
+
+  const feedback = getFeedback(book)
+
+  // Pass 1 — draft (book-specific, series-aware, grade-calibrated prompt).
+  const draft = await callGemini({
+    apiKey,
+    systemText: SYSTEM_PROMPT,
+    userText: buildPrompt(book, gradeValue, questionCount, excerpt, feedback),
+    questionCount,
+    signal,
+  })
+  if (!draft || draft.questions.length === 0) {
     throw new Error('Gemini returned no usable questions. Please try again.')
   }
-  return quiz
+
+  // Pass 2 — self-refinement: the model fixes any non-book-specific, series-leaking,
+  // unverifiable, or off-grade questions. Best-effort: if it fails or returns
+  // fewer/empty, keep the draft.
+  if (refine) {
+    try {
+      const refined = await callGemini({
+        apiKey,
+        systemText: null,
+        userText: buildRefinePrompt(book, gradeValue, draft, excerpt),
+        questionCount,
+        signal,
+      })
+      if (refined && refined.questions.length >= Math.min(draft.questions.length, 2)) {
+        if (!refined.sourceNote) refined.sourceNote = draft.sourceNote
+        return refined
+      }
+    } catch {
+      /* keep the draft on any refine failure */
+    }
+  }
+
+  return draft
 }

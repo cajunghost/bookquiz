@@ -64,6 +64,7 @@ async function openLibraryByIsbn(isbn) {
     publisher: Array.isArray(d.publishers) ? d.publishers[0] : null,
     pageCount: d.number_of_pages || null,
     subjects: (d.subjects || []).slice(0, 12),
+    series: Array.isArray(d.series) ? d.series[0] : d.series || null,
     coverUrl: d.covers?.[0] ? `https://covers.openlibrary.org/b/id/${d.covers[0]}-L.jpg` : null,
     _source: 'Open Library',
   }
@@ -103,6 +104,7 @@ function merge(a = {}, b = {}) {
     publishedYear: pick(a.publishedYear, b.publishedYear),
     publisher: pick(a.publisher, b.publisher),
     pageCount: pick(a.pageCount, b.pageCount),
+    series: pick(a.series, b.series),
     coverUrl: pick(a.coverUrl, b.coverUrl),
     sources: [a._source, b._source].filter(Boolean),
   }

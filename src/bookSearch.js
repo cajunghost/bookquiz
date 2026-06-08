@@ -32,7 +32,7 @@ function olCover(id, size = 'M') {
 async function searchOpenLibrary(q, signal) {
   const url =
     `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}` +
-    `&limit=8&fields=key,title,author_name,first_publish_year,cover_i,isbn,subject,first_sentence`
+    `&limit=8&fields=key,title,author_name,first_publish_year,cover_i,isbn,subject,first_sentence,series`
   const data = await fetchJson(url, signal)
   if (!data?.docs) return []
   return data.docs
@@ -45,6 +45,7 @@ async function searchOpenLibrary(q, signal) {
       publishedYear: d.first_publish_year ? String(d.first_publish_year) : null,
       coverUrl: olCover(d.cover_i),
       subjects: (d.subject || []).slice(0, 12),
+      series: Array.isArray(d.series) ? d.series[0] : d.series || null,
       firstSentence: Array.isArray(d.first_sentence)
         ? d.first_sentence[0]
         : d.first_sentence || null,

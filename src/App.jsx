@@ -52,6 +52,7 @@ export default function App() {
       publishedYear: s.publishedYear || null,
       publisher: null,
       pageCount: null,
+      series: s.series || null,
       coverUrl: s.coverUrl || null,
       freeText: !!s.freeText,
       pgId: s.pgId || null,
