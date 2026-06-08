@@ -11,6 +11,7 @@ import {
   extractJson,
   normalizeQuiz,
 } from './quizCore.js'
+import { verifyQuizAgainstText } from './gutenberg.js'
 import { getFeedback } from './store.js'
 
 const MODEL = 'gemini-2.5-flash'
@@ -36,9 +37,10 @@ const SCHEMA = {
           correctIndex: { type: 'INTEGER' },
           explanation: { type: 'STRING' },
           skill: { type: 'STRING' },
+          evidence: { type: 'STRING' },
         },
-        required: ['question', 'options', 'correctIndex', 'explanation', 'skill'],
-        propertyOrdering: ['question', 'options', 'correctIndex', 'explanation', 'skill'],
+        required: ['question', 'options', 'correctIndex', 'explanation', 'skill', 'evidence'],
+        propertyOrdering: ['question', 'options', 'correctIndex', 'explanation', 'skill', 'evidence'],
       },
     },
   },
@@ -114,6 +116,7 @@ export async function generateWithGemini({
   gradeValue,
   questionCount,
   excerpt,
+  fullText = null,
   signal,
   refine = true,
 }) {
@@ -134,6 +137,8 @@ export async function generateWithGemini({
     throw new Error('Gemini returned no usable questions. Please try again.')
   }
 
+  let best = draft
+
   // Pass 2 — self-refinement: the model fixes any non-book-specific, series-leaking,
   // unverifiable, or off-grade questions. Best-effort: if it fails or returns
   // fewer/empty, keep the draft.
@@ -148,12 +153,33 @@ export async function generateWithGemini({
       })
       if (refined && refined.questions.length >= Math.min(draft.questions.length, 2)) {
         if (!refined.sourceNote) refined.sourceNote = draft.sourceNote
-        return refined
+        best = refined
       }
     } catch {
       /* keep the draft on any refine failure */
     }
   }
 
-  return draft
+  // Pass 3 — EVIDENCE VERIFICATION against the real book text (public-domain
+  // titles only). Drops any question whose verbatim quote isn't actually in this
+  // volume — the reliable defense against series-bleed. Skipped when we don't
+  // have the full text (the prompt's evidence requirement still applies).
+  if (fullText) {
+    const { questions: verified, dropped } = verifyQuizAgainstText(best.questions, fullText)
+    if (verified.length > 0) {
+      best = {
+        ...best,
+        questions: verified,
+        generatedCount: verified.length,
+        sourceNote:
+          (best.sourceNote ? best.sourceNote + ' ' : '') +
+          'Every question was verified against the actual text of this book' +
+          (dropped > 0 ? ` (${dropped} unverifiable question${dropped > 1 ? 's' : ''} removed).` : '.'),
+      }
+    }
+    // If verification removed everything, fall through and keep `best` as-is
+    // rather than returning an empty quiz.
+  }
+
+  return best
 }

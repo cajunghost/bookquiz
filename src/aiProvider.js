@@ -31,10 +31,13 @@ export async function generateQuiz({ book, gradeValue, questionCount, signal }) 
   const apiKey = getApiKey()
   if (!apiKey) throw new MissingKeyError()
 
-  // For public-domain titles, ground the prompt in a real excerpt of the book.
+  // For public-domain titles, fetch the real text: an excerpt grounds the
+  // prompt, and the full text is used to VERIFY each question's evidence quote
+  // actually appears in this book (drops series-bleed / fabricated questions).
   let excerpt = null
+  let fullText = null
   if (book.freeText && book.pgId) {
-    const fullText = await fetchGutenbergText(book.pgId, book.formats, signal).catch(() => null)
+    fullText = await fetchGutenbergText(book.pgId, book.formats, signal).catch(() => null)
     excerpt = excerptFor(fullText)
   }
 
@@ -44,11 +47,9 @@ export async function generateQuiz({ book, gradeValue, questionCount, signal }) 
     gradeValue,
     questionCount,
     excerpt,
+    fullText,
     signal,
     refine: getRefine(),
   })
-  if (excerpt && !quiz.sourceNote) {
-    quiz.sourceNote = 'Grounded in an excerpt of the book’s public-domain text.'
-  }
   return quiz
 }

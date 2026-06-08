@@ -60,11 +60,14 @@ Quizzes are written by **Google Gemini** (`gemini-2.5-flash`) using your own fre
 called directly from the browser with JSON-schema structured output. For public-domain
 books, the prompt is grounded in a real excerpt of the book's text.
 
-**Book-specific, not series-wide.** The prompt enforces that questions test only *this
-single volume* — if the title is part of a series, the model is told to ignore the wider
-series arc and other installments, so every question is answerable by someone who read
-only this book. Series detection uses Open Library's `series` metadata when available,
-with a general single-volume instruction as a fallback.
+**Book-specific, not series-wide — verified against the text.** Every question must come
+with a short **verbatim quote** ("evidence") from the book that proves the answer. For
+public-domain titles, the app then **checks that quote actually appears in the book's full
+text and drops any question that fails** — this is the reliable defense against
+"series-bleed" (questions about other installments the model knows from training but that
+aren't in *this* volume). The quote is shown under each question as "From the book:". For
+books without available full text, the evidence requirement still applies in the prompt,
+plus series detection via Open Library's `series` metadata and the self-review pass below.
 
 **Common Core grade anchors.** Each grade (K–12) carries a paraphrased Common Core
 "Reading: Literature" (RL) standard that's injected into the prompt, so questions target

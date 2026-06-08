@@ -16,13 +16,14 @@ Core rules:
 7. Vary the skills across the quiz; do not repeat a question in different words.
 8. Calibrate difficulty, vocabulary, sentence length, and the skills you target to the requested grade level.
 9. Every answer must be defensible from the book; avoid opinion-based or unanswerable questions.
-10. Use "sourceNote" to briefly note what your questions are based on and any limitation (e.g., working from a description or excerpt rather than the full text, or that this title is part of a series and questions are limited to this volume).
+10. EVIDENCE IS MANDATORY. For every question, include an "evidence" field containing a SHORT VERBATIM QUOTE (one sentence or phrase, copied exactly) from THIS book that proves the correct answer. The quote must be real text from this specific volume. If you cannot supply a real verbatim quote from this book, DO NOT include that question. This is how we confirm a question belongs to this book and not to another book in the series.
+11. Use "sourceNote" to briefly note what your questions are based on and any limitation.
 
 Return ONLY a JSON object of the form:
-{"sourceNote": string, "questions": [{"question": string, "options": [string,string,string,string], "correctIndex": number, "explanation": string, "skill": string}]}
+{"sourceNote": string, "questions": [{"question": string, "options": [string,string,string,string], "correctIndex": number, "explanation": string, "skill": string, "evidence": string}]}
 Do not wrap it in markdown fences or add any prose before or after the JSON.
 
-If you lack enough grounded knowledge of THIS specific book to write fair, accurate questions, say so in "sourceNote" and produce only the questions you can support — accuracy and book-specificity matter more than hitting the requested count.`
+If you lack enough grounded knowledge of THIS specific book to write fair, accurate questions with real verbatim evidence, say so in "sourceNote" and produce only the questions you can support — accuracy and book-specificity matter more than hitting the requested count.`
 
 export function buildPrompt(book, gradeValue, questionCount, excerpt, feedback) {
   if (!book || !book.title) {
@@ -128,7 +129,9 @@ ${excerptBlock}
 Draft quiz to revise:
 ${JSON.stringify({ questions: draftQuiz.questions })}
 
-Return ONLY the corrected JSON object: {"sourceNote": string, "questions": [{"question","options","correctIndex","explanation","skill"}]}. No prose, no markdown fences.`
+Each question MUST keep its "evidence" field — a short verbatim quote copied exactly from this book that proves the answer. Fix any evidence that is not a real quote from this specific volume; drop any question you cannot back with a real quote.
+
+Return ONLY the corrected JSON object: {"sourceNote": string, "questions": [{"question","options","correctIndex","explanation","skill","evidence"}]}. No prose, no markdown fences.`
 }
 
 // Pull a JSON object out of arbitrary model text (handles markdown fences and
@@ -170,6 +173,7 @@ export function normalizeQuiz(data, requestedCount) {
       correctIndex,
       explanation: typeof q.explanation === 'string' ? q.explanation.trim() : '',
       skill: typeof q.skill === 'string' ? q.skill.trim() : 'comprehension',
+      evidence: typeof q.evidence === 'string' ? q.evidence.trim() : '',
     })
   }
   return {

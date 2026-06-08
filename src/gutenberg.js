@@ -55,11 +55,76 @@ export function stripGutenbergBoilerplate(raw) {
   return text.trim()
 }
 
-// A representative excerpt for grounding an AI prompt (skips front matter).
-export function excerptFor(fullText, maxChars = 8000) {
+// A representative excerpt for grounding an AI prompt. Samples several windows
+// spread across the book (not just the opening) so questions can be drawn from
+// throughout this volume rather than biased to the first chapter.
+export function excerptFor(fullText, maxChars = 12000) {
   if (!fullText) return null
-  const body = fullText.slice(Math.min(1500, Math.floor(fullText.length * 0.05)))
-  return body.slice(0, maxChars)
+  // Skip ~5% front matter (title page, contents).
+  const start = Math.min(1500, Math.floor(fullText.length * 0.05))
+  const body = fullText.slice(start)
+  if (body.length <= maxChars) return body
+
+  const windows = 4
+  const win = Math.floor(maxChars / windows)
+  const span = Math.floor(body.length / windows)
+  const parts = []
+  for (let i = 0; i < windows; i++) {
+    const from = i * span
+    parts.push(body.slice(from, from + win).trim())
+  }
+  return parts.join('\n\n[...]\n\n')
+}
+
+// ---- Evidence verification (anti-series-bleed) ----------------------------
+
+// Normalize text for fuzzy substring matching: lowercase, strip punctuation,
+// collapse whitespace. Smart quotes/dashes are folded to plain forms first.
+function normalizeForMatch(s) {
+  return String(s || '')
+    .replace(/[’‘]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[—–]/g, '-')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Is `evidence` actually present in the book text? Returns true if a run of at
+ * least `minRun` consecutive words from the (normalized) evidence appears in the
+ * (normalized) full text — tolerant of minor quoting differences, but strict
+ * enough to reject invented/other-volume "quotes".
+ */
+export function evidenceInText(evidence, normalizedText, minRun = 6) {
+  const words = normalizeForMatch(evidence).split(' ').filter(Boolean)
+  if (words.length === 0) return false
+  // Short evidence: require the whole thing to appear.
+  if (words.length <= minRun) {
+    return normalizedText.includes(words.join(' '))
+  }
+  // Otherwise require any window of `minRun` consecutive words to appear.
+  for (let i = 0; i + minRun <= words.length; i++) {
+    if (normalizedText.includes(words.slice(i, i + minRun).join(' '))) return true
+  }
+  return false
+}
+
+/**
+ * Keep only questions whose `evidence` quote is verifiably in the book text.
+ * Returns { questions, kept, dropped }. Questions without evidence are dropped
+ * (we can't confirm them against this specific volume).
+ */
+export function verifyQuizAgainstText(questions, fullText) {
+  const normText = normalizeForMatch(fullText)
+  const kept = []
+  let dropped = 0
+  for (const q of questions) {
+    if (q?.evidence && evidenceInText(q.evidence, normText)) kept.push(q)
+    else dropped += 1
+  }
+  return { questions: kept, kept: kept.length, dropped }
 }
 
 // --- Deterministic question generation (no AI) ----------------------------

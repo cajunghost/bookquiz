@@ -133,6 +133,12 @@ export default function Quiz({ quiz, gradeLabel, book }) {
                 </p>
               )}
 
+              {submitted && q.evidence && (
+                <p className="evidence-quote">
+                  <span className="evidence-label">From the book:</span> “{q.evidence}”
+                </p>
+              )}
+
               {submitted && (
                 <div className="feedback-row">
                   {flagged[qi] ? (
